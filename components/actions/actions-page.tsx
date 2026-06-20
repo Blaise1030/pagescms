@@ -486,7 +486,7 @@ export function ActionsPage({
     () => (
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <h1 className="font-semibold text-lg">Actions</h1>
+          <h1 className="font-semibold">Actions</h1>
           <Tooltip>
             <TooltipTrigger asChild>
               <Button

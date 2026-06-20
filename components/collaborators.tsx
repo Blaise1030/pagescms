@@ -29,7 +29,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   DropdownMenu,
@@ -104,11 +103,15 @@ function InviteCollaboratorsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogTrigger asChild>
-        <Button variant={triggerVariant} size={triggerSize} disabled={disabled}>
-          {triggerLabel || "Invite"}
-        </Button>
-      </DialogTrigger>
+      <Button
+        type="button"
+        variant={triggerVariant}
+        size={triggerSize}
+        disabled={disabled}
+        onClick={() => onOpenChange(true)}
+      >
+        {triggerLabel || "Invite"}
+      </Button>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Invite collaborators</DialogTitle>
@@ -222,7 +225,7 @@ export function Collaborators({
     return () => controller.abort();
   }, [owner, repo, branch]);
 
-  const handleInviteCollaborators = async (inviteEmails: string[]) => {
+  const handleInviteCollaborators = useCallback(async (inviteEmails: string[]) => {
     setIsInviting(true);
     setInviteError(undefined);
 
@@ -254,9 +257,9 @@ export function Collaborators({
     } finally {
       setIsInviting(false);
     }
-  };
+  }, [addNewCollaborator, owner, repo]);
 
-  const handleConfirmRemove = async (collaboratorId: number) => {
+  const handleConfirmRemove = useCallback(async (collaboratorId: number) => {
     setRemoving((prev) => [...prev, collaboratorId]);
 
     try {
@@ -279,9 +282,9 @@ export function Collaborators({
       setPendingRemoveId(null);
       setRemoving((prev) => prev.filter((id) => id !== collaboratorId));
     }
-  };
+  }, [owner, repo]);
 
-  const handleResendInvite = async (collaboratorId: number) => {
+  const handleResendInvite = useCallback(async (collaboratorId: number) => {
     setResending((prev) => [...prev, collaboratorId]);
 
     try {
@@ -300,7 +303,7 @@ export function Collaborators({
     } finally {
       setResending((prev) => prev.filter((id) => id !== collaboratorId));
     }
-  };
+  }, [owner, repo]);
 
   const headerNode = useMemo(() => {
     const showInviteAction = !isLoading && !error && collaborators.length > 0;
@@ -308,7 +311,7 @@ export function Collaborators({
     return (
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <h1 className="font-semibold text-lg">Collaborators</h1>
+          <h1 className="font-semibold">Collaborators</h1>
           <Tooltip>
             <TooltipTrigger asChild>
               <Button

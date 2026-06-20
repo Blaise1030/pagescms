@@ -658,7 +658,7 @@ export function Entry({
     <div className="flex min-w-0 items-center gap-2">
       <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
         <Breadcrumb className="min-w-0 overflow-hidden">
-          <BreadcrumbList className="min-w-0 flex-nowrap font-semibold text-lg">
+          <BreadcrumbList className="min-w-0 flex-nowrap">
             {breadcrumbNode}
           </BreadcrumbList>
         </Breadcrumb>

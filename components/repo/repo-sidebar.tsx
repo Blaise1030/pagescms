@@ -47,6 +47,7 @@ import {
   SidebarMenuSub,
   SidebarMenuSubButton,
   SidebarMenuSubItem,
+  SidebarRail,
   useSidebar,
 } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
@@ -159,25 +160,21 @@ function RepoSwitcher() {
         >
           <DropdownMenuTrigger asChild>
             <SidebarMenuButton
-              size="lg"
-              className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+              size="sm"
+              tooltip={repo}
+              className="h-7 gap-2 rounded-lg px-2 data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
             >
-              <Avatar className="h-8 w-8 rounded-md">
+              <Avatar className="h-5 w-5 shrink-0 rounded">
                 <AvatarImage
                   src={`https://github.com/${owner}.png`}
                   alt={owner}
                 />
-                <AvatarFallback>
+                <AvatarFallback className="text-[9px]">
                   {owner.slice(0, 2).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
-              <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-medium">{repo}</span>
-                <span className="truncate text-xs text-muted-foreground">
-                  {currentBranch || owner}
-                </span>
-              </div>
-              <ChevronsUpDown className="ml-auto size-4" />
+              <span className="truncate text-[13px] font-medium">{repo}</span>
+              <ChevronsUpDown className="ml-auto size-3 shrink-0 opacity-40" />
             </SidebarMenuButton>
           </DropdownMenuTrigger>
           <DropdownMenuContent
@@ -244,6 +241,9 @@ function RepoSwitcher() {
             )}
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild>
+              <Link href={`/${owner}/${repo}/${encodeURIComponent(currentBranch)}/configuration`}>Settings</Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
               <Link href="/">All projects</Link>
             </DropdownMenuItem>
           </DropdownMenuContent>
@@ -265,6 +265,11 @@ export function RepoSidebar() {
   const { config } = useConfig();
   const { isMobile, setOpenMobile } = useSidebar();
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
+  const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
+
+  const toggleSection = useCallback((label: string) => {
+    setCollapsedSections((prev) => ({ ...prev, [label]: !prev[label] }));
+  }, []);
 
   useEffect(() => {
     if (isMobile) {
@@ -484,9 +489,11 @@ export function RepoSidebar() {
         <SidebarMenuItem key={key}>
           <SidebarMenuButton
             asChild
+            size="sm"
+            tooltip={node.label || node.name}
           >
             <button type="button" onClick={() => toggleGroup(key)}>
-              <ChevronRight className={cn("size-4 transition-transform", isOpen && "rotate-90")} />
+              <ChevronRight className={cn("size-3.5 transition-transform", isOpen && "rotate-90")} />
               <span>{node.label || node.name}</span>
             </button>
           </SidebarMenuButton>
@@ -516,7 +523,12 @@ export function RepoSidebar() {
 
     return (
       <SidebarMenuItem key={key}>
-        <SidebarMenuButton asChild isActive={isActive}>
+        <SidebarMenuButton
+          asChild
+          size="sm"
+          isActive={isActive}
+          tooltip={node.label || node.name}
+        >
           <Link href={href} onClick={handleNavigation}>
             {getNodeIcon(node)}
             <span>{node.label || node.name}</span>
@@ -528,43 +540,66 @@ export function RepoSidebar() {
 
   const renderNavigationGroup = (label: string, nodes: NavigationNode[]) => {
     if (nodes.length === 0) return null;
+    const isCollapsed = collapsedSections[label] ?? false;
 
     return (
-      <SidebarGroup>
-        <SidebarGroupLabel>{label}</SidebarGroupLabel>
-        <SidebarGroupContent>
-          <SidebarMenu>
-            {nodes.map((node) => renderNavigationNode(node, `${label}-${node.name}`))}
-          </SidebarMenu>
-        </SidebarGroupContent>
+      <SidebarGroup className="py-0 px-1">
+        <SidebarGroupLabel
+          className="min-h-5 w-fit px-2 text-xs font-medium text-muted-foreground cursor-pointer select-none flex items-center gap-1 hover:text-foreground transition-colors"
+          onClick={() => toggleSection(label)}
+        >
+          {label}
+          <ChevronRight className={cn("size-3 transition-transform", !isCollapsed && "rotate-90")} />
+        </SidebarGroupLabel>
+        {!isCollapsed && (
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {nodes.map((node) => renderNavigationNode(node, `${label}-${node.name}`))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        )}
       </SidebarGroup>
     );
   };
 
   const renderFlatGroup = (label: string, items: NavItem[]) => {
     if (items.length === 0) return null;
+    const isCollapsed = collapsedSections[label] ?? false;
 
     return (
-      <SidebarGroup>
-        <SidebarGroupLabel>{label}</SidebarGroupLabel>
-        <SidebarGroupContent>
-          <SidebarMenu>
-            {items.map((item) => {
-              const isActive =
-                pathname === item.href || pathname.startsWith(`${item.href}/`);
-              return (
-                <SidebarMenuItem key={item.key}>
-                  <SidebarMenuButton asChild isActive={isActive}>
-                    <Link href={item.href} onClick={handleNavigation}>
-                      {item.icon}
-                      <span>{item.label}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              );
-            })}
-          </SidebarMenu>
-        </SidebarGroupContent>
+      <SidebarGroup className="py-0 px-1">
+        <SidebarGroupLabel
+          className="min-h-5 w-fit px-2 text-xs font-medium text-muted-foreground cursor-pointer select-none flex items-center gap-1 hover:text-foreground transition-colors"
+          onClick={() => toggleSection(label)}
+        >
+          {label}
+          <ChevronRight className={cn("size-3 transition-transform", !isCollapsed && "rotate-90")} />
+        </SidebarGroupLabel>
+        {!isCollapsed && (
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {items.map((item) => {
+                const isActive =
+                  pathname === item.href || pathname.startsWith(`${item.href}/`);
+                return (
+                  <SidebarMenuItem key={item.key}>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={isActive}
+                      size="sm"
+                      tooltip={item.label}
+                    >
+                      <Link href={item.href} onClick={handleNavigation}>
+                        {item.icon}
+                        <span>{item.label}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        )}
       </SidebarGroup>
     );
   };
@@ -574,18 +609,26 @@ export function RepoSidebar() {
     renderNavigationGroup("Media", mediaNavigation),
     rootActions.length > 0 && config
       ? (
-        <SidebarGroup key="Actions">
-          <SidebarGroupLabel>Actions</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <RepoActionButtons
-              actions={rootActions}
-              owner={config.owner}
-              repo={config.repo}
-              refName={config.branch}
-              contextType="repo"
-              layout="sidebar"
-            />
-          </SidebarGroupContent>
+        <SidebarGroup key="Actions" className="py-0 px-1">
+          <SidebarGroupLabel
+            className="min-h-5 w-fit px-2 text-xs font-medium text-muted-foreground cursor-pointer select-none flex items-center gap-1 hover:text-foreground transition-colors"
+            onClick={() => toggleSection("Actions")}
+          >
+            Actions
+            <ChevronRight className={cn("size-3 transition-transform", !(collapsedSections["Actions"] ?? false) && "rotate-90")} />
+          </SidebarGroupLabel>
+          {!(collapsedSections["Actions"] ?? false) && (
+            <SidebarGroupContent>
+              <RepoActionButtons
+                actions={rootActions}
+                owner={config.owner}
+                repo={config.repo}
+                refName={config.branch}
+                contextType="repo"
+                layout="sidebar"
+              />
+            </SidebarGroupContent>
+          )}
         </SidebarGroup>
       )
       : null,
@@ -593,28 +636,23 @@ export function RepoSidebar() {
   ].filter(Boolean);
 
   return (
-    <Sidebar collapsible="offcanvas">
-      <SidebarHeader>
+    <Sidebar
+      variant="inset"
+      collapsible="offcanvas"
+    >
+      <SidebarHeader className="px-2 py-2">
         <SidebarMenu>
           <SidebarMenuItem>
             <RepoSwitcher />
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
-      <SidebarContent>
+      <SidebarContent className="gap-0 px-1">
         {groups.map((group, index) => (
           <Fragment key={index}>{group}</Fragment>
         ))}
       </SidebarContent>
-      <SidebarFooter className="border-t">
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <User align="start" />
-            <AdminButton />
-          </div>
-          <About />
-        </div>
-      </SidebarFooter>
+      <SidebarRail />
     </Sidebar>
   );
 }

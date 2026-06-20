@@ -480,7 +480,7 @@ const MediaView = ({
   ), []);
 
   const breadcrumbNode = useMemo(() => {
-    const breadcrumbTextClass = usePageHeader ? "font-semibold text-lg flex-nowrap" : "text-sm flex-nowrap";
+    const breadcrumbTextClass = usePageHeader ? "font-semibold flex-nowrap" : "text-sm flex-nowrap";
     const isDialog = !usePageHeader;
     const mediaTitle = mediaConfig.label || mediaConfig.name || "Media";
     const rootPath = normalizePath(mediaConfig.input);

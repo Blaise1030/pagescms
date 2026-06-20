@@ -830,7 +830,7 @@ export function Collection({ name, path }: { name: string; path?: string }) {
 
     return (
       <Breadcrumb>
-        <BreadcrumbList className="font-semibold text-lg flex-nowrap">
+        <BreadcrumbList className="font-semibold flex-nowrap">
           {groupTrail.map((group) => (
             <Fragment key={`group-${group.name}`}>
               <BreadcrumbItem>

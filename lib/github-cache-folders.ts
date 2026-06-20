@@ -140,10 +140,10 @@ const withFolderCacheLock = async <T>(
   scope: CacheScope,
   callback: (tx: any) => Promise<T>,
 ): Promise<{ acquired: boolean; value?: T }> => {
-  return db.transaction(async (tx) => ({
+  return {
     acquired: true,
-    value: await callback(tx),
-  }));
+    value: await callback(db),
+  };
 };
 
 const markFolderScopeError = async (
@@ -297,7 +297,10 @@ const replaceFolderCache = async (
     );
 
     if (entries.length > 0) {
-      await tx.insert(cacheFileTable).values(entries);
+      const BATCH_SIZE = 6; // D1 limit: 100 bound params per query; 15 params per row → floor(100/15)
+      for (let i = 0; i < entries.length; i += BATCH_SIZE) {
+        await tx.insert(cacheFileTable).values(entries.slice(i, i + BATCH_SIZE));
+      }
 
       await tx.insert(cacheFileMetaTable).values({
         owner: lowerOwner,
