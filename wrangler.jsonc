@@ -1,0 +1,28 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "pagescms",
+  "compatibility_date": "2026-06-20",
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
+  "main": "./worker/index.ts",
+  "assets": {
+    "directory": "dist/client",
+    "not_found_handling": "none",
+    "binding": "ASSETS"
+  },
+  "images": {
+    "binding": "IMAGES"
+  },
+  "vars": {
+    "BASE_URL": "https://your-worker.pagescms.workers.dev"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "pagescms",
+      "database_id": "356e1b45-94c3-4011-a704-cbb23511e52c",
+      "migrations_dir": "db/migrations"
+    }
+  ]
+}

@@ -1,14 +1,24 @@
 import { db } from '../index';
-import { sql } from 'drizzle-orm';
+import {
+  cacheFileMetaTable,
+  cacheFileTable,
+  cachePermissionTable,
+  configTable,
+} from '../schema';
 
 console.log('Clearing cache tables...');
 
-db.execute(sql`TRUNCATE TABLE cache_file, cache_permission, config, cache_file_meta`)
+db.transaction(async (tx) => {
+  await tx.delete(cacheFileTable);
+  await tx.delete(cachePermissionTable);
+  await tx.delete(configTable);
+  await tx.delete(cacheFileMetaTable);
+})
   .then(() => {
     console.log('✅ Cache tables cleared successfully');
     process.exit(0);
   })
-  .catch((error) => {
+  .catch((error: unknown) => {
     console.error('❌ Error clearing cache:', error);
     process.exit(1);
   });

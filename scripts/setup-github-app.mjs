@@ -5,6 +5,12 @@ import { execFile } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 
+const brand = JSON.parse(
+  readFileSync(resolve(process.cwd(), "brand.json"), "utf8"),
+);
+const defaultAppName = brand.appName;
+const defaultAppDescription = `${brand.appName} is an open source CMS for editing content in GitHub repositories. Based on ${brand.upstream.appName} by ${brand.upstream.author}.`;
+
 const args = parseArgs(process.argv.slice(2));
 
 if (args.help) {
@@ -21,7 +27,7 @@ async function main() {
       process.env.BETTER_AUTH_URL ||
       "http://localhost:3000",
   );
-  const appName = (args.appName || "Pages CMS").trim();
+  const appName = (args.appName || defaultAppName).trim();
   const ownerType = args.ownerType === "org" ? "org" : "personal";
   const orgSlug = ownerType === "org" ? (args.org || "").trim() : "";
   const state = randomBytes(16).toString("hex");
@@ -41,8 +47,7 @@ async function main() {
     url: baseUrl,
     callback_urls: [userAuthorizationCallbackUrl],
     redirect_url: localCallbackUrl,
-    description:
-      "Pages CMS is an open source CMS for editing content in GitHub repositories.",
+    description: defaultAppDescription,
     public: false,
     default_permissions: {
       administration: "write",
@@ -126,7 +131,7 @@ async function main() {
   console.log("\nNext:");
   console.log("1) Install the app on your target account/repositories.");
   console.log("   Disable 'User-to-server token expiration' if GitHub shows that option.");
-  console.log("2) Start Pages CMS.");
+  console.log(`2) Start ${defaultAppName}.`);
 }
 
 main().catch((error) => {
@@ -350,7 +355,7 @@ function printHelp() {
       "",
       "Options:",
       "  --base-url <url>         App base URL (default: http://localhost:3000)",
-      "  --app-name <name>        GitHub App display name (default: Pages CMS)",
+      `  --app-name <name>        GitHub App display name (default: ${defaultAppName})`,
       "  --owner-type <type>      personal or org (default: personal)",
       "  --org <slug>             Organization slug when owner-type=org",
       "  --port <number>          Local callback port (default: 8787)",

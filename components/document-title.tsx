@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect } from "react";
+import { APP_NAME } from "@/lib/brand";
 
-const APP_TITLE = "Pages CMS";
+const APP_TITLE = APP_NAME;
 
 export const formatDocumentTitle = (title?: string | null) =>
   title ? `${title} | ${APP_TITLE}` : APP_TITLE;

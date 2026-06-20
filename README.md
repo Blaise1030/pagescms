@@ -1,68 +1,51 @@
-# Pages CMS
+# PagesCMS
 
-[Pages CMS](https://pagescms.org) is an open source CMS for GitHub repositories. It is especially well suited for static sites and content-driven apps built with tools like Jekyll, Hugo, Next.js, Astro, VuePress, and similar stacks.
+> Community fork of [Pages CMS](https://pagescms.org) by [Ronan Berder](https://github.com/hunvreus) ([@hunvreus](https://github.com/hunvreus)).
+>
+> This repository is **not** the official Pages CMS project. See [ATTRIBUTION.md](ATTRIBUTION.md) for upstream credit and fork details.
 
-You can use the hosted version directly at [app.pagescms.org](https://app.pagescms.org), or run your own local development copy from this repository.
+PagesCMS is a GitHub-native CMS for static sites and content-driven apps (Jekyll, Hugo, Next.js, Astro, and similar stacks). This fork targets **Cloudflare Workers + D1** instead of the upstream PostgreSQL deployment path.
 
-[![Screenshot of the Pages CMS editor](https://pagescms.org/media/screenshot.png)](https://demo.pagescms.org)
+For the official hosted product, documentation, and support channels, visit [pagescms.org](https://pagescms.org).
 
-*[Watch the demo ▶](https://demo.pagescms.org)*
+## Relationship to upstream
 
-## Documentation
+| | Upstream Pages CMS | This fork |
+| --- | --- | --- |
+| Author | Ronan Berder | Blaise Tiong |
+| Repository | [pagescms/pagescms](https://github.com/pagescms/pagescms) | [Blaise1030/pagescms](https://github.com/Blaise1030/pagescms) |
+| Database | PostgreSQL | Cloudflare D1 |
+| Deployment | Varies (see upstream docs) | Cloudflare Workers |
 
-Full documentation lives at [pagescms.org/docs](https://pagescms.org/docs).
-
-Useful starting points:
-
-- [Install locally](https://pagescms.org/docs/guides/installing/)
-- [Create the GitHub App](https://pagescms.org/docs/guides/installing/github-app/)
-- [Environment variables](https://pagescms.org/docs/development/environment-variables/)
-- [Upgrading to 2.x](https://pagescms.org/docs/guides/upgrading-to-2/)
-
-## Use online
-
-The easiest way to get started is the hosted version at [app.pagescms.org](https://app.pagescms.org).
-
-Use that if you want to:
-
-- try Pages CMS immediately,
-- edit content without running anything locally,
-- stay on the latest hosted version.
+Upstream docs remain useful for CMS concepts and configuration: [pagescms.org/docs](https://pagescms.org/docs).
 
 ## Local development
 
 ### What you need
 
-- PostgreSQL
-- a GitHub App
-- a local `.env.local`
-- the Pages CMS repo checked out locally
+- Node.js
+- A Cloudflare account (for D1 and Workers deployment)
+- A GitHub App
+- A local `.env.local` (or Wrangler secrets)
 
 ### Quick start
 
-1. Clone the repository:
+1. Clone this repository:
 
 ```bash
-git clone https://github.com/pagescms/pagescms.git
+git clone https://github.com/Blaise1030/pagescms.git
 cd pagescms
 ```
 
-2. Start PostgreSQL locally:
-
-```bash
-docker run --name pagescms-db -e POSTGRES_USER=pagescms -e POSTGRES_PASSWORD=pagescms -e POSTGRES_DB=pagescms -p 5432:5432 -d postgres:16
-```
-
-3. Install dependencies:
+2. Install dependencies:
 
 ```bash
 npm install
 ```
 
-4. Create `.env.local` with at least:
+3. Create `.env.local` with at least:
 
 ```bash
-DATABASE_URL=postgresql://pagescms:pagescms@localhost:5432/pagescms
 BETTER_AUTH_SECRET=your-random-secret
 CRYPTO_KEY=your-random-secret
 ```
@@ -74,19 +57,13 @@ BASE_URL=https://cms.example.com
 ADMIN_EMAILS=admin@example.com
 ```
 
-Notes:
-
-- In production, `BASE_URL` should be the single canonical URL for the app.
-- Do not mix a custom domain and a `*.netlify.app` URL for the same install.
-- `ADMIN_EMAILS` is a comma-separated allowlist for access to the admin panel.
-
 Generate secrets with:
 
 ```bash
 openssl rand -base64 32
 ```
 
-5. Create your GitHub App with the helper:
+4. Create your GitHub App with the helper:
 
 ```bash
 npm run setup:github-app -- --base-url http://localhost:3000
@@ -96,46 +73,45 @@ Useful options:
 
 - `--owner-type personal|org`
 - `--org <slug>`
-- `--app-name "Pages CMS (local)"`
+- `--app-name "PagesCMS (local)"`
 - `--env .env.local`
 - `--no-open`
 
-6. Run database migrations:
+5. Apply database migrations to your D1 database (see `wrangler.jsonc`):
 
 ```bash
 npm run db:migrate
 ```
 
-If cache state is known stale or corrupted, clear it with:
+If cache state is stale or corrupted:
 
 ```bash
 npm run db:clear-cache
 ```
 
-7. Start the app:
+6. Start the app:
 
 ```bash
 npm run dev
 ```
 
-If you need GitHub webhooks to reach your local app, use a public tunnel URL as the helper `--base-url`.
-
-For more detail, see:
+For more detail on CMS configuration, see upstream docs:
 
 - [Install locally](https://pagescms.org/docs/guides/installing/)
 - [Create the GitHub App](https://pagescms.org/docs/guides/installing/github-app/)
 - [Environment variables](https://pagescms.org/docs/development/environment-variables/)
 - [Caching](https://pagescms.org/docs/development/caching/)
 
-## Support the project
+## Support upstream
 
-- [Contribute code](https://github.com/pagescms/pagescms/pulls)
-- [Report issues](https://github.com/pagescms/pagescms/issues)
-- [Sponsor me](https://github.com/sponsors/hunvreus)
-- [Star the project on GitHub](https://github.com/pagescms/pagescms)
-- [Join the Discord chat](https://pagescms.org/chat)
+If you benefit from the original project, consider supporting its author:
+
+- [Star Pages CMS on GitHub](https://github.com/pagescms/pagescms)
+- [Sponsor Ronan Berder](https://github.com/sponsors/hunvreus)
+- [Report upstream issues](https://github.com/pagescms/pagescms/issues)
+
+For issues specific to this fork, use [Blaise1030/pagescms issues](https://github.com/Blaise1030/pagescms/issues).
 
 ## License
 
-Everything in this repo is released under the [MIT License](LICENSE).
-# pagescms
+Released under the [MIT License](LICENSE). Original copyright remains with Ronan Berder; modifications in this fork are copyright Blaise Tiong. See [ATTRIBUTION.md](ATTRIBUTION.md).

@@ -1,14 +1,15 @@
 import { getFileName, normalizePath } from "@/lib/utils/file";
+import { COMMIT_VIA_LABEL } from "@/lib/brand";
 
 type CommitAction = "create" | "update" | "delete" | "rename";
 type CommitTemplates = Partial<Record<CommitAction, string>>;
 type CommitIdentity = "app" | "user";
 
 const defaultCommitTemplates: Record<CommitAction, string> = {
-  create: "Create {path} (via Pages CMS)",
-  update: "Update {path} (via Pages CMS)",
-  delete: "Delete {path} (via Pages CMS)",
-  rename: "Rename {oldPath} to {newPath} (via Pages CMS)",
+  create: "Create {path} ({via})",
+  update: "Update {path} ({via})",
+  delete: "Delete {path} ({via})",
+  rename: "Rename {oldPath} to {newPath} ({via})",
 };
 
 const getCommitTemplates = (configObject?: Record<string, any>): CommitTemplates => {
@@ -83,6 +84,7 @@ const buildCommitTokens = ({
     oldFilename: normalizedOldPath ? getFileName(normalizedOldPath) : "",
     newPath: normalizedNewPath,
     newFilename: normalizedNewPath ? getFileName(normalizedNewPath) : "",
+    via: COMMIT_VIA_LABEL,
   };
 };
 

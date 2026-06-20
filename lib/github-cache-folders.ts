@@ -140,21 +140,10 @@ const withFolderCacheLock = async <T>(
   scope: CacheScope,
   callback: (tx: any) => Promise<T>,
 ): Promise<{ acquired: boolean; value?: T }> => {
-  const primary = `${owner.toLowerCase()}::${repo.toLowerCase()}::${branch}`;
-  const secondary = `${scope.context}::${scope.path}`;
-
-  return db.transaction(async (tx) => {
-    const result = await tx.execute(sql`
-      select pg_try_advisory_xact_lock(hashtext(${primary}), hashtext(${secondary})) as locked
-    `);
-    const locked = Boolean((result as any)?.[0]?.locked);
-    if (!locked) return { acquired: false };
-
-    return {
-      acquired: true,
-      value: await callback(tx),
-    };
-  });
+  return db.transaction(async (tx) => ({
+    acquired: true,
+    value: await callback(tx),
+  }));
 };
 
 const markFolderScopeError = async (

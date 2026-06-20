@@ -1,0 +1,20 @@
+{
+  "appName": "PagesCMS",
+  "appDescription": "The No-Hassle CMS for GitHub",
+  "appShortDescription": "Open source CMS for static sites. Edit directly on GitHub with a clean interface.",
+  "fork": {
+    "owner": "Blaise1030",
+    "repo": "pagescms",
+    "copyright": "Blaise Tiong",
+    "tagline": "Community fork deployed on Cloudflare Workers with D1"
+  },
+  "upstream": {
+    "appName": "Pages CMS",
+    "author": "Ronan Berder",
+    "authorGithub": "hunvreus",
+    "owner": "pagescms",
+    "repo": "pagescms",
+    "website": "https://pagescms.org",
+    "docsUrl": "https://pagescms.org/docs"
+  }
+}

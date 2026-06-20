@@ -5,6 +5,7 @@ import { emailOTP } from "better-auth/plugins";
 import { db } from "@/db";
 import * as schema from "@/db/schema";
 import { getBaseUrl } from "@/lib/base-url";
+import { APP_NAME } from "@/lib/brand";
 import { repairLegacyGithubStubOnLogin } from "@/lib/github-legacy-stub-repair";
 import { sendEmail } from "@/lib/mailer";
 import { syncGithubProfileOnLogin } from "@/lib/github-account";
@@ -164,7 +165,7 @@ export const auth = betterAuth({
       sendVerificationOTP: async ({ email, otp, type }) => {
         if (type !== "sign-in") return;
 
-        const subject = `Your Pages CMS temporary code is ${otp}`;
+        const subject = `Your ${APP_NAME} temporary code is ${otp}`;
         const html = await render(
           LoginEmailTemplate({
             email,

@@ -3,6 +3,7 @@ import { Providers } from "@/components/providers";
 import type { Metadata } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import { getBaseUrl } from "@/lib/base-url";
+import { APP_DESCRIPTION, APP_NAME } from "@/lib/brand";
 import { cn } from "@/lib/utils";
 import "./globals.css";
 
@@ -17,37 +18,35 @@ const jetbrainsMono = JetBrains_Mono({
 });
 const appUrl = getBaseUrl();
 const socialImage = "/images/social-card.png";
-const description = "The No-Hassle CMS for GitHub";
-
 export const metadata: Metadata = {
   metadataBase: new URL(appUrl),
   title: {
-    template: "%s | Pages CMS",
-    default: "Pages CMS",
+    template: `%s | ${APP_NAME}`,
+    default: APP_NAME,
   },
-  description,
+  description: APP_DESCRIPTION,
   alternates: {
     canonical: "/",
   },
   openGraph: {
     type: "website",
     url: appUrl,
-    siteName: "Pages CMS",
-    title: "Pages CMS",
-    description,
+    siteName: APP_NAME,
+    title: APP_NAME,
+    description: APP_DESCRIPTION,
     images: [
       {
         url: socialImage,
         width: 1200,
         height: 630,
-        alt: "Pages CMS social card",
+        alt: `${APP_NAME} social card`,
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Pages CMS",
-    description,
+    title: APP_NAME,
+    description: APP_DESCRIPTION,
     images: [socialImage],
   },
 };

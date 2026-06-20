@@ -20,17 +20,32 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import packageJson from "../package.json";
+import {
+  APP_NAME,
+  APP_SHORT_DESCRIPTION,
+  FORK_REPOSITORY,
+  FORK_TAGLINE,
+  FORK_URL,
+  UPSTREAM_APP_NAME,
+  UPSTREAM_AUTHOR,
+  UPSTREAM_AUTHOR_GITHUB,
+  UPSTREAM_DOCS_URL,
+  UPSTREAM_REPOSITORY,
+  UPSTREAM_URL,
+  UPSTREAM_WEBSITE,
+} from "@/lib/brand";
 
-const releaseRef = process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_REF;
-const inferredTagVersion =
-  releaseRef && /^v\d+\.\d+\.\d+/.test(releaseRef) ? releaseRef : undefined;
-const version =
-  process.env.NEXT_PUBLIC_APP_VERSION ??
-  inferredTagVersion ??
-  packageJson.version;
-const UPDATE_DOCS_URL = "https://pagescms.org/docs";
+const UPDATE_DOCS_URL = UPSTREAM_DOCS_URL;
 
 export function About() {
+  const releaseRef = process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_REF;
+  const inferredTagVersion =
+    releaseRef && /^v\d+\.\d+\.\d+/.test(releaseRef) ? releaseRef : undefined;
+  const version =
+    process.env.NEXT_PUBLIC_APP_VERSION ??
+    inferredTagVersion ??
+    packageJson.version;
+
   const [open, setOpen] = useState(false);
   const [latestVersion, setLatestVersion] = useState<string | null>(null);
 
@@ -84,11 +99,11 @@ export function About() {
                     <path d="M0 4.8C0 2.14903 2.14903 0 4.8 0H12.0118C13.2848 0 14.5057 0.505713 15.4059 1.40589L22.5941 8.59411C23.4943 9.49429 24 10.7152 24 11.9882V19.2C24 21.851 21.851 24 19.2 24H4.8C2.14903 24 0 21.851 0 19.2V4.8Z"></path>
                   </svg>
                 </span>
-                <span className="sr-only">About Pages CMS</span>
+                <span className="sr-only">About {APP_NAME}</span>
               </Button>
             </DialogTrigger>
           </TooltipTrigger>
-          <TooltipContent>About Pages CMS</TooltipContent>
+          <TooltipContent>About {APP_NAME}</TooltipContent>
         </Tooltip>
       </TooltipProvider>
       <DialogContent className="w-[20rem] max-w-[calc(100vw-2rem)]">
@@ -104,11 +119,13 @@ export function About() {
             </svg>
           </div>
           <DialogTitle className="text-base font-semibold">
-            Pages CMS
+            {APP_NAME}
           </DialogTitle>
           <DialogDescription>
-            Open source CMS for static sites. Edit directly on GitHub with a
-            clean interface.
+            {APP_SHORT_DESCRIPTION}
+            <span className="mt-2 block text-xs text-muted-foreground">
+              {FORK_TAGLINE}. Based on {UPSTREAM_APP_NAME} by {UPSTREAM_AUTHOR}.
+            </span>
           </DialogDescription>
         </DialogHeader>
 
@@ -138,26 +155,42 @@ export function About() {
             }
           />
           <Row
-            label="Website"
+            label="Fork"
             value={
-              <ExternalLink href="https://pagescms.org">
-                pagescms.org
+              <ExternalLink href={FORK_URL}>
+                {FORK_REPOSITORY}
               </ExternalLink>
             }
           />
           <Row
-            label="Docs"
+            label="Upstream docs"
             value={
-              <ExternalLink href="https://pagescms.org/docs">
-                pagescms.org/docs
+              <ExternalLink href={UPSTREAM_DOCS_URL}>
+                {UPSTREAM_DOCS_URL.replace("https://", "")}
               </ExternalLink>
             }
           />
           <Row
-            label="GitHub"
+            label="Upstream"
             value={
-              <ExternalLink href="https://github.com/pagescms/pagescms">
-                pagescms/pagescms
+              <ExternalLink href={UPSTREAM_URL}>
+                {UPSTREAM_REPOSITORY}
+              </ExternalLink>
+            }
+          />
+          <Row
+            label="Originally by"
+            value={
+              <ExternalLink href={`https://github.com/${UPSTREAM_AUTHOR_GITHUB}`}>
+                {UPSTREAM_AUTHOR}
+              </ExternalLink>
+            }
+          />
+          <Row
+            label="Upstream site"
+            value={
+              <ExternalLink href={UPSTREAM_WEBSITE}>
+                {UPSTREAM_WEBSITE.replace("https://", "")}
               </ExternalLink>
             }
           />

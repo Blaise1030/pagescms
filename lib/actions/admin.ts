@@ -2,17 +2,26 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { eq, sql } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { db } from "@/db";
-import { sessionTable } from "@/db/schema";
+import {
+  cacheFileMetaTable,
+  cacheFileTable,
+  cachePermissionTable,
+  configTable,
+  sessionTable,
+} from "@/db/schema";
 import { requireAdminSession } from "@/lib/admin";
 
 const resetGlobalCache = async () => {
   await requireAdminSession();
 
-  await db.execute(
-    sql`TRUNCATE TABLE cache_file, cache_permission, config, cache_file_meta`,
-  );
+  await db.transaction(async (tx) => {
+    await tx.delete(cacheFileTable);
+    await tx.delete(cachePermissionTable);
+    await tx.delete(configTable);
+    await tx.delete(cacheFileMetaTable);
+  });
 
   revalidatePath("/admin");
 

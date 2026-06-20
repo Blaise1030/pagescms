@@ -40,3 +40,6 @@ next-env.d.ts
 
 # Database
 local.db
+/dist/
+.vinext/
+.wrangler/

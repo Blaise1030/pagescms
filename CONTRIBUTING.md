@@ -1,14 +1,16 @@
-# Contributing to Pages CMS
+# Contributing to PagesCMS
 
-- Submit pull requests (PRs) against the `development` branch, not `main`.
-- For branches, we have:
-  - `main` is our production and default branch. This is what we deploy to https://app.pagescms.org.
-  - `development` is for staging. We deploy it at https://dev.pagescms.org.
-  - New features are worked in `feature/name-of-the-feature` branches.
-  - Issues are addressed in `issue/123-main-isse` branches.
-  - When ready, we PR against `development`, test it and then finally merge to `main`.
+This is a community fork of [Pages CMS](https://pagescms.org) by [Ronan Berder](https://github.com/hunvreus). See [ATTRIBUTION.md](ATTRIBUTION.md).
+
+## This fork
+
+- Open issues and pull requests against this repository: https://github.com/Blaise1030/pagescms
 - Keep changes focused: one feature or fix per PR.
 - Test locally before submitting.
 - Follow existing code style.
+
+## Upstream contributions
+
+If your change belongs in the original project (not fork-specific), please contribute to [pagescms/pagescms](https://github.com/pagescms/pagescms) instead.
 
 Thanks for helping!

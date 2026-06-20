@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
+import { FORK_REPOSITORY } from "@/lib/brand";
 
-const REPO = "pagescms/pagescms";
-const PACKAGE_JSON_URL =
-  "https://raw.githubusercontent.com/pagescms/pagescms/main/package.json";
+const PACKAGE_JSON_URL = `https://raw.githubusercontent.com/${FORK_REPOSITORY}/main/package.json`;
 
 export async function GET() {
   try {
@@ -25,7 +24,7 @@ export async function GET() {
     return NextResponse.json({
       status: "success",
       latest: pkg.version ?? null,
-      repository: REPO,
+      repository: FORK_REPOSITORY,
       source: "package.json",
     });
   } catch {
