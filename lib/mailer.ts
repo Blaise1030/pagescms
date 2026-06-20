@@ -1,7 +1,4 @@
-import { Resend } from "resend";
-import nodemailer from "nodemailer";
-
-type MailProvider = "resend" | "smtp";
+import { env } from "cloudflare:workers";
 
 type SendEmailInput = {
   to: string | string[];
@@ -10,17 +7,17 @@ type SendEmailInput = {
   text?: string;
 };
 
-type SmtpTransporter = {
-  sendMail: (options: {
-    from: string;
-    to: string | string[];
-    subject: string;
-    html: string;
-    text?: string;
-  }) => Promise<{ rejected?: string[] }>;
+type CloudflareEmailSendResult = {
+  delivered?: string[];
+  permanent_bounces?: string[];
+  queued?: string[];
 };
 
-let smtpTransporter: SmtpTransporter | null = null;
+type CloudflareApiResponse = {
+  success: boolean;
+  errors?: Array<{ message: string }>;
+  result?: CloudflareEmailSendResult;
+};
 
 const getEnv = (name: string) => {
   const value = process.env[name];
@@ -29,100 +26,91 @@ const getEnv = (name: string) => {
   return trimmed.length > 0 ? trimmed : undefined;
 };
 
-const parseBoolean = (value: string, envName: string) => {
-  const normalized = value.trim().toLowerCase();
-  if (normalized === "true") return true;
-  if (normalized === "false") return false;
-  throw new Error(`${envName} must be "true" or "false" when set.`);
-};
-
 const getFromEmail = () => {
-  const from = getEnv("EMAIL_FROM") || getEnv("RESEND_FROM_EMAIL");
+  const from = getEnv("EMAIL_FROM");
   if (!from) {
-    throw new Error("Missing sender email. Set EMAIL_FROM (or RESEND_FROM_EMAIL for compatibility).");
+    throw new Error("Missing sender email. Set EMAIL_FROM to a verified Cloudflare Email Service address.");
   }
   return from;
 };
 
-const getEmailProvider = (): MailProvider => {
-  const configured = getEnv("EMAIL_PROVIDER")?.toLowerCase();
-  if (configured) {
-    if (configured === "resend" || configured === "smtp") return configured;
-    throw new Error(`Unsupported EMAIL_PROVIDER "${configured}". Use "resend" or "smtp".`);
+const assertDeliveryResult = (result: CloudflareEmailSendResult | undefined) => {
+  const bounced = result?.permanent_bounces ?? [];
+  if (bounced.length > 0) {
+    throw new Error(`Email permanently bounced for: ${bounced.join(", ")}`);
   }
-
-  if (getEnv("RESEND_API_KEY")) return "resend";
-  if (getEnv("SMTP_HOST")) return "smtp";
-
-  throw new Error(
-    "No email provider configured. Set EMAIL_PROVIDER=resend|smtp, or define RESEND_API_KEY / SMTP_HOST.",
-  );
 };
 
-const getSmtpTransporter = () => {
-  if (smtpTransporter) return smtpTransporter;
+const sendViaBinding = async ({
+  from,
+  to,
+  subject,
+  html,
+  text,
+}: SendEmailInput & { from: string }) => {
+  if (!env.EMAIL) return false;
 
-  const host = getEnv("SMTP_HOST");
-  if (!host) throw new Error("Missing SMTP_HOST for SMTP email provider.");
+  await env.EMAIL.send({
+    from,
+    to,
+    subject,
+    html,
+    text,
+  });
 
-  const portRaw = getEnv("SMTP_PORT") || "587";
-  const port = Number(portRaw);
-  if (!Number.isInteger(port) || port <= 0) throw new Error("SMTP_PORT must be a positive integer.");
+  return true;
+};
 
-  const secureRaw = getEnv("SMTP_SECURE");
-  const secure = secureRaw ? parseBoolean(secureRaw, "SMTP_SECURE") : port === 465;
-
-  const user = getEnv("SMTP_USER");
-  const pass = getEnv("SMTP_PASSWORD");
-  if ((user && !pass) || (!user && pass)) {
-    throw new Error("SMTP_USER and SMTP_PASSWORD must be set together.");
+const sendViaRestApi = async ({
+  from,
+  to,
+  subject,
+  html,
+  text,
+}: SendEmailInput & { from: string }) => {
+  const accountId = getEnv("CLOUDFLARE_ACCOUNT_ID");
+  const apiToken = getEnv("CLOUDFLARE_API_TOKEN");
+  if (!accountId || !apiToken) {
+    throw new Error(
+      "No email binding available. Configure the EMAIL send_email binding in wrangler.jsonc, or set CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN for the REST API.",
+    );
   }
 
-  const transporter = nodemailer.createTransport({
-    host,
-    port,
-    secure,
-    ...(user && pass ? { auth: { user, pass } } : {}),
-  });
-  smtpTransporter = transporter;
+  const response = await fetch(
+    `https://api.cloudflare.com/client/v4/accounts/${accountId}/email/sending/send`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ from, to, subject, html, text }),
+    },
+  );
 
-  return transporter;
+  const data = (await response.json()) as CloudflareApiResponse;
+  if (!response.ok || !data.success) {
+    const message =
+      data.errors?.map((error) => error.message).join(", ") ||
+      `Cloudflare Email API request failed (${response.status})`;
+    throw new Error(message);
+  }
+
+  assertDeliveryResult(data.result);
 };
 
 export const sendEmail = async ({ to, subject, html, text }: SendEmailInput) => {
   const recipients = Array.isArray(to) ? to : [to];
   if (recipients.length === 0) throw new Error("At least one recipient is required.");
 
-  const from = getFromEmail();
-  const provider = getEmailProvider();
-
-  if (provider === "resend") {
-    const apiKey = getEnv("RESEND_API_KEY");
-    if (!apiKey) throw new Error("Missing RESEND_API_KEY for Resend provider.");
-
-    const resend = new Resend(apiKey);
-    const { error } = await resend.emails.send({
-      from,
-      to: recipients,
-      subject,
-      html,
-      text,
-    });
-
-    if (error) throw new Error(error.message);
-    return;
-  }
-
-  const transporter = getSmtpTransporter();
-  const info = await transporter.sendMail({
-    from,
+  const payload = {
+    from: getFromEmail(),
     to: recipients,
     subject,
     html,
     text,
-  });
+  };
 
-  if (Array.isArray(info.rejected) && info.rejected.length > 0) {
-    throw new Error(`SMTP rejected recipients: ${info.rejected.join(", ")}`);
-  }
+  if (await sendViaBinding(payload)) return;
+  await sendViaRestApi(payload);
 };

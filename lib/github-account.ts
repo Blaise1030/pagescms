@@ -1,26 +1,25 @@
-import { cache } from "react";
 import { and, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { accountTable, userTable } from "@/db/schema";
 import { createOctokitInstance } from "@/lib/utils/octokit";
 
 // Read the linked GitHub OAuth account for a user.
-const getGithubAccount = cache(async (userId: string) => {
+const getGithubAccount = async (userId: string) => {
   return db.query.accountTable.findFirst({
     where: and(
       eq(accountTable.userId, userId),
       eq(accountTable.providerId, "github")
     )
   });
-});
+};
 
-const getGithubId = cache(async (userId: string): Promise<number | null> => {
+const getGithubId = async (userId: string): Promise<number | null> => {
   const account = await getGithubAccount(userId);
   if (!account?.accountId) return null;
 
   const githubId = Number(account.accountId);
   return Number.isInteger(githubId) ? githubId : null;
-});
+};
 
 // Refresh GitHub-derived profile fields after login without overwriting custom names.
 const syncGithubProfileOnLogin = async (userId: string) => {

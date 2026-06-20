@@ -9,6 +9,7 @@ import { clearScopedFileCache } from "@/lib/github-webhook-installation";
 import { getInstallationToken } from "@/lib/token";
 import { normalizePath } from "@/lib/utils/file";
 import { createOctokitInstance } from "@/lib/utils/octokit";
+import { decodeBase64Utf8 } from "@/lib/encoding";
 
 const WEBHOOK_PUSH_INCREMENTAL_MAX_FILES = Number.parseInt(
   process.env.WEBHOOK_PUSH_INCREMENTAL_MAX_FILES ?? "120",
@@ -181,7 +182,7 @@ const handlePushWebhookEvent = async (event: string | null, data: any) => {
     throw new Error(`Invalid .pages.yml response type: ${configFileResponse.data.type}`);
   }
 
-  const configFile = Buffer.from(configFileResponse.data.content, "base64").toString();
+  const configFile = decodeBase64Utf8(configFileResponse.data.content);
   const parsed = parseConfig(configFile);
   if (parsed.errors.length > 0) {
     throw new Error(`Failed to parse .pages.yml: ${parsed.errors[0]?.message || "Unknown parse error"}`);

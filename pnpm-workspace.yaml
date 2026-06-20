@@ -1,0 +1,11 @@
+allowBuilds:
+  esbuild: true
+  msw: true
+  sharp: true
+  unrs-resolver: true
+  workerd: true
+minimumReleaseAgeExclude:
+  - '@cloudflare/vite-plugin@1.42.1'
+  - miniflare@4.20260617.1
+  - vinext@0.1.6
+  - wrangler@4.103.0

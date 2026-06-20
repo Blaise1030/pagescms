@@ -14,6 +14,7 @@ import { createHttpError, toErrorResponse } from "@/lib/api-error";
 import mergeWith from "lodash.mergewith";
 import { buildCommitTokens, resolveCommitIdentity, resolveCommitMessage } from "@/lib/commit-message";
 import { requireApiUserSession } from "@/lib/session-server";
+import { decodeBase64Utf8, encodeUtf8Base64 } from "@/lib/encoding";
 
 /**
  * Create, update and delete individual files in a GitHub repository.
@@ -99,9 +100,9 @@ export async function POST(
             const zodValidation = zodSchema.safeParse(contentObject);
             
             if (zodValidation.success === false ) {
-              const errorMessages = zodValidation.error.errors.map((error: any) => {
-                let message = error.message;
-                if (error.path.length > 0) message = `${message} at ${error.path.join(".")}`;
+              const errorMessages = zodValidation.error.issues.map((issue) => {
+                let message = issue.message;
+                if (issue.path.length > 0) message = `${message} at ${issue.path.join(".")}`;
                 return message;
               });
               throw new Error(`Content validation failed: ${errorMessages.join(", ")}`);
@@ -137,7 +138,7 @@ export async function POST(
                 throw new Error("Invalid response type");
               }
 
-              const existingContent = Buffer.from(response.data.content, "base64").toString();
+              const existingContent = decodeBase64Utf8(response.data.content);
               const existingContentObject = parse(existingContent, { format: schema.format, delimiters: schema.delimiters });
 
               finalContentObject = mergeWith({}, existingContentObject, unwrappedContentObject, (objValue: any, srcValue: any) => {
@@ -154,9 +155,9 @@ export async function POST(
                 delimiters: schema.delimiters
               }
             );
-            contentBase64 = Buffer.from(stringifiedContentObject).toString("base64");
+            contentBase64 = encodeUtf8Base64(stringifiedContentObject);
           } else {
-            contentBase64 = Buffer.from(data.content.body ?? "").toString("base64");
+            contentBase64 = encodeUtf8Base64(data.content.body ?? "");
           }
         }
         break;
@@ -189,7 +190,7 @@ export async function POST(
           throw createHttpError(`Creating the settings file isn't allowed.`, 403);
         }
 
-        contentBase64 = Buffer.from(data.content.body ?? "").toString("base64");
+        contentBase64 = encodeUtf8Base64(data.content.body ?? "");
         break;
       default:
         throw new Error(`Invalid type "${data.type}".`);
@@ -256,7 +257,7 @@ export async function POST(
           type: data.sha ? 'modify' : 'add',
           path: response.data.content.path!,
           sha: response.data.content.sha!,
-          content: Buffer.from(contentBase64, 'base64').toString('utf-8'),
+          content: decodeBase64Utf8(contentBase64),
           size: response.data.content.size,
           downloadUrl: response.data.content.download_url,
           commit: {

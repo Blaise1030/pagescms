@@ -9,6 +9,7 @@ import { assertGithubIdentity } from "@/lib/authz-shared";
 import { getToken } from "@/lib/token";
 import { createHttpError, toErrorResponse } from "@/lib/api-error";
 import { requireApiUserSession } from "@/lib/session-server";
+import { decodeBase64Utf8 } from "@/lib/encoding";
 
 /**
  * Fetches and parses individual file contents from GitHub repositories
@@ -106,7 +107,7 @@ export async function GET(
       throw createHttpError("Invalid response type", 500);
     }
 
-    const content = Buffer.from(response.data.content, "base64").toString();
+    const content = decodeBase64Utf8(response.data.content);
     const contentObject = name
       ? parseContent(content, schema, config)
       : { body: content };

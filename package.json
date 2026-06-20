@@ -12,6 +12,9 @@
   },
   "version": "3.0.0-alpha.1",
   "private": true,
+  "engines": {
+    "node": ">=22.18.0"
+  },
   "scripts": {
     "setup:github-app": "node scripts/setup-github-app.mjs",
     "dev": "vinext dev",
@@ -20,7 +23,8 @@
     "deploy": "vinext build && wrangler deploy",
     "lint": "eslint .",
     "db:generate": "npx drizzle-kit generate",
-    "db:migrate": "npx drizzle-kit migrate",
+    "db:migrate": "wrangler d1 migrations apply pagescms --remote",
+    "db:migrate:local": "wrangler d1 migrations apply pagescms --local",
     "auth:generate": "npx @better-auth/cli generate --config ./lib/auth.ts --output ./auth-schema.ts --yes",
     "db:clear-cache": "npx tsx db/scripts/clear-cache.ts",
     "db:collaborators:export": "npx tsx db/scripts/collaborators/export.ts",
@@ -77,12 +81,10 @@
     "marked": "^17.0.1",
     "next": "^16.2.0",
     "next-themes": "^0.4.6",
-    "nodemailer": "^8.0.2",
     "radix-ui": "^1.4.3",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "react-hook-form": "^7.71.1",
-    "resend": "^6.9.1",
     "slugify": "^1.6.6",
     "sonner": "^2.0.7",
     "swr": "^2.4.1",

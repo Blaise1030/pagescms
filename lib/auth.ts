@@ -72,15 +72,33 @@ export const auth = betterAuth({
             headers: {
               Authorization: `Bearer ${token.accessToken}`,
               "User-Agent": "better-auth",
+              Accept: "application/vnd.github+json",
             },
           });
           if (emailsResponse.ok) {
             emails = await emailsResponse.json();
+          } else {
+            console.warn("[auth] github user/emails failed", {
+              status: emailsResponse.status,
+              githubRequestId: emailsResponse.headers.get("x-github-request-id"),
+            });
           }
-        } catch {}
+        } catch (error) {
+          console.warn("[auth] github user/emails request error", {
+            error: error instanceof Error ? error.message : String(error),
+          });
+        }
 
-        if (!profile.email && emails) {
-          profile.email = (emails.find((entry) => entry.primary) ?? emails[0])?.email as string;
+        if (!profile.email && emails?.length) {
+          profile.email = (emails.find((entry) => entry.primary) ?? emails[0])?.email;
+        }
+
+        if (!profile.email) {
+          console.warn("[auth] github sign-in missing email", {
+            login: profile.login,
+            hasEmails: Boolean(emails?.length),
+          });
+          return null;
         }
         const emailVerified = emails?.find((entry) => entry.email === profile.email)?.verified ?? false;
 
@@ -103,7 +121,7 @@ export const auth = betterAuth({
     },
   },
   database: drizzleAdapter(db, {
-    provider: "pg",
+    provider: "sqlite",
     schema: {
       user: schema.userTable,
       session: schema.sessionTable,

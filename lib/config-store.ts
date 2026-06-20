@@ -8,6 +8,7 @@ import { configTable } from "@/db/schema";
 import { and, eq, sql } from "drizzle-orm";
 import { createOctokitInstance } from "@/lib/utils/octokit";
 import { configVersion, normalizeConfig, parseConfig } from "@/lib/config";
+import { decodeBase64Utf8 } from "@/lib/encoding";
 
 const getConfigFromDb = async (
   owner: string,
@@ -146,7 +147,7 @@ const fetchConfigFromGithub = async (
       throw new Error("Invalid .pages.yml response type.");
     }
 
-    const configFile = Buffer.from(response.data.content, "base64").toString();
+    const configFile = decodeBase64Utf8(response.data.content);
     const parsed = parseConfig(configFile);
     const configObject = normalizeConfig(parsed.document.toJSON());
 

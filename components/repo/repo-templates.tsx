@@ -1,10 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useActionState } from "react";
 import { useRouter } from "next/navigation";
 import { useUser } from "@/contexts/user-context";
-import { handleCopyTemplate } from "@/lib/actions/template";
 import templates from "@/lib/templates";
 import { Button } from "@/components/ui/button";
 import { SubmitButton } from "@/components/submit-button";
@@ -26,38 +24,48 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { requireApiSuccess } from "@/lib/api-client";
 import { toast } from "sonner";
 import { ChevronsUpDown, ArrowUpRight } from "lucide-react";
+
+type CopyTemplateResult = {
+  message?: string;
+  error?: string;
+  data?: {
+    template: string;
+    owner: string;
+    repo: string;
+    branch: string;
+  };
+};
 
 export function RepoTemplates({ defaultAccount }: { defaultAccount?: any }) {
   const { user } = useUser();
   const router = useRouter();
-  const dialogCloseRef = useRef<any>(null);
+  const dialogCloseRef = useRef<HTMLButtonElement>(null);
 
-  const [copyTemplateState, copyTemplateAction] = useActionState(
-    handleCopyTemplate,
-    {
-      message: "",
-      data: {
-        template: "",
-        owner: "",
-        repo: "",
-        branch: "",
-      },
+  const [copyTemplateState, setCopyTemplateState] = useState<CopyTemplateResult>({
+    message: "",
+    data: {
+      template: "",
+      owner: "",
+      repo: "",
+      branch: "",
     },
-  );
+  });
   const [selectedAccount, setSelectedAccount] = useState(
     defaultAccount || user?.accounts?.[0],
   );
   const [name, setName] = useState(templates[0].suggested);
   const [isValidName, setIsValidName] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const validateName = useCallback((name: string) => {
-    if (!name || name.length > 100) return false;
+  const validateName = useCallback((repoName: string) => {
+    if (!repoName || repoName.length > 100) return false;
     const validNameRegex =
       /^(?!\.|\.\.|.*\/|.*\/\.|.*\.\.|.*\/\.)(?!@)(?!.*[~^:?*[\]{}()<>#%&!\\$'"|;,])[^\x20\x7f]*[^\x20\x7f\.]$/;
-    return validNameRegex.test(name);
+    return validNameRegex.test(repoName);
   }, []);
 
   useEffect(() => {
@@ -72,7 +80,7 @@ export function RepoTemplates({ defaultAccount }: { defaultAccount?: any }) {
 
         let attempt = 0;
         while (attempt < 10) {
-          await new Promise((resolve) => setTimeout(resolve, 1000));
+          await new Promise((resolveDelay) => setTimeout(resolveDelay, 1000));
           const response = await fetch(
             `/api/${copyTemplateState.data.owner}/${copyTemplateState.data.repo}/main/entries/.pages.yml`,
           );
@@ -94,7 +102,7 @@ export function RepoTemplates({ defaultAccount }: { defaultAccount?: any }) {
       if (dialogCloseRef.current) dialogCloseRef.current.click();
       toast.promise(waitForRepoReadyPromise, {
         loading: `Waiting for the repository to be ready`,
-        success: (response: any) => {
+        success: () => {
           if (!copyTemplateState.data?.owner || !copyTemplateState.data?.repo)
             return;
           router.push(
@@ -102,7 +110,7 @@ export function RepoTemplates({ defaultAccount }: { defaultAccount?: any }) {
           );
           return `Repository is ready, redirecting you.`;
         },
-        error: (error: any) => error.message,
+        error: (error: Error) => error.message,
       });
     }
   }, [copyTemplateState, router]);
@@ -110,6 +118,37 @@ export function RepoTemplates({ defaultAccount }: { defaultAccount?: any }) {
   useEffect(() => {
     if (defaultAccount) setSelectedAccount(defaultAccount);
   }, [defaultAccount]);
+
+  const handleCopyTemplate = async (
+    event: React.FormEvent<HTMLFormElement>,
+    templateRepository: string,
+  ) => {
+    event.preventDefault();
+    if (!selectedAccount?.login || !isValidName) return;
+
+    setIsSubmitting(true);
+    try {
+      const response = await fetch("/api/templates/copy", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          template: templateRepository,
+          owner: selectedAccount.login,
+          name,
+        }),
+      });
+      const data = await requireApiSuccess<CopyTemplateResult>(
+        response,
+        "Failed to copy template",
+      );
+      setCopyTemplateState(data);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Failed to copy template";
+      setCopyTemplateState({ error: message });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <div className="flex flex-col gap-y-4">
@@ -135,7 +174,10 @@ export function RepoTemplates({ defaultAccount }: { defaultAccount?: any }) {
                 </button>
               </DialogTrigger>
               <DialogContent className="sm:max-w-[425px]">
-                <form action={copyTemplateAction} className="grid gap-4">
+                <form
+                  className="grid gap-4"
+                  onSubmit={(event) => void handleCopyTemplate(event, template.repository)}
+                >
                   <DialogHeader>
                     <DialogTitle>Copy template</DialogTitle>
                     <DialogDescription>
@@ -166,18 +208,6 @@ export function RepoTemplates({ defaultAccount }: { defaultAccount?: any }) {
                     </div>
                   </a>
                   <div className="grid gap-4">
-                    <input
-                      name="owner"
-                      type="hidden"
-                      value={selectedAccount.login}
-                      readOnly
-                    />
-                    <input
-                      name="template"
-                      type="hidden"
-                      value={template.repository}
-                      readOnly
-                    />
                     <div className="grid grid-cols-4 items-center gap-4">
                       <Label htmlFor="name" className="text-right">
                         Account
@@ -243,7 +273,7 @@ export function RepoTemplates({ defaultAccount }: { defaultAccount?: any }) {
                   </div>
                   <DialogFooter>
                     <DialogClose ref={dialogCloseRef}></DialogClose>
-                    <SubmitButton type="submit" disabled={!isValidName}>
+                    <SubmitButton type="submit" disabled={!isValidName || isSubmitting}>
                       Create copy
                     </SubmitButton>
                   </DialogFooter>

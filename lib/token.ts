@@ -2,7 +2,6 @@
  * Token helper functions.
  */
 
-import { cache } from "react";
 import { App } from "@octokit/app";
 import { decrypt, encrypt } from "@/lib/crypto";
 import { createOctokitInstance } from "@/lib/utils/octokit";
@@ -19,7 +18,7 @@ import { collaboratorMatchesUserForRepo } from "@/lib/collaborator-access";
 const installationTokenRefreshInFlight = new Map<number, Promise<string>>();
 
 // Get a token for a user (including collagborators who need to provide an owner/repo scope).
-const getToken = cache(async (
+const getToken = async (
   user: User,
   owner: string,
   repo: string,
@@ -57,10 +56,10 @@ const getToken = cache(async (
     `You do not have permission to access "${owner}/${repo}".`,
     403,
   );
-});
+};
 
 // Get the GitHub App installation token for a specific repository.
-const getInstallationToken = cache(async (owner: string, repo: string) => {
+const getInstallationToken = async (owner: string, repo: string) => {
   const app = new App({
     appId: process.env.GITHUB_APP_ID!,
     privateKey: process.env.GITHUB_APP_PRIVATE_KEY!,
@@ -132,15 +131,15 @@ const getInstallationToken = cache(async (owner: string, repo: string) => {
   } finally {
     installationTokenRefreshInFlight.delete(installationId);
   }
-});
+};
 
 // Get the GitHub user token.
-const getUserToken = cache(async (userId: string) => {
+const getUserToken = async (userId: string) => {
   const githubAccount = await getGithubAccount(userId);
   if (!githubAccount?.accessToken) throw new Error(`GitHub token not found for user ${userId}.`);
 
   return githubAccount.accessToken;
-});
+};
 
 const canAccessRepoWithToken = async (
   token: string,
