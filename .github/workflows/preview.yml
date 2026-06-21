@@ -17,7 +17,6 @@ permissions:
 
 jobs:
   deploy:
-    environment: preview
     uses: ./.github/workflows/deploy.yml
     secrets: inherit
     with:
