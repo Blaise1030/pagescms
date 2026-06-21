@@ -55,7 +55,7 @@ jobs:
         id: set-url
         if: ${{ inputs.worker-name != '' }}
         run: |
-          URL="https://${{ inputs.worker-name }}.${{ vars.CLOUDFLARE_WORKERS_DEV_SUBDOMAIN }}.workers.dev"
+          URL="https://${{ inputs.worker-name }}.nocodemonkeys1.workers.dev"
           echo "BASE_URL=$URL" >> $GITHUB_ENV
           echo "deployment-url=$URL" >> $GITHUB_OUTPUT
 
