@@ -1,5 +1,13 @@
 # Changelog
 
+## [3.3.0-alpha.1](https://github.com/Blaise1030/pagescms/compare/pagescms-v3.2.0-alpha.1...pagescms-v3.3.0-alpha.1) (2026-06-21)
+
+
+### Features
+
+* added preview panel ([3315cab](https://github.com/Blaise1030/pagescms/commit/3315cab70b4b8654a2551535c6c3ba6e8d048871))
+* CMS enhancements — preview panel, preferences, lazy loading, CI/CD improvements ([2070a45](https://github.com/Blaise1030/pagescms/commit/2070a4558df146e5cf3256999a4f6450d6c0b5cb))
+
 ## [3.2.0-alpha.1](https://github.com/Blaise1030/pagescms/compare/pagescms-v3.1.0-alpha.1...pagescms-v3.2.0-alpha.1) (2026-06-21)
 
 
