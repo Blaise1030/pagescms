@@ -20,6 +20,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import packageJson from "../package.json";
+import { AppLogo } from "@/components/app-logo";
 import {
   APP_NAME,
   APP_SHORT_DESCRIPTION,
@@ -89,16 +90,7 @@ export function About() {
           <TooltipTrigger asChild>
             <DialogTrigger asChild>
               <Button size="icon-sm" variant="ghost">
-                <span className="bg-primary text-primary-foreground rounded-md size-6 flex items-center justify-center">
-                  <svg
-                    className="size-4"
-                    viewBox="0 0 24 24"
-                    fill="currentColor"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <path d="M0 4.8C0 2.14903 2.14903 0 4.8 0H12.0118C13.2848 0 14.5057 0.505713 15.4059 1.40589L22.5941 8.59411C23.4943 9.49429 24 10.7152 24 11.9882V19.2C24 21.851 21.851 24 19.2 24H4.8C2.14903 24 0 21.851 0 19.2V4.8Z"></path>
-                  </svg>
-                </span>
+                <AppLogo className="size-6" />
                 <span className="sr-only">About {APP_NAME}</span>
               </Button>
             </DialogTrigger>
@@ -108,16 +100,7 @@ export function About() {
       </TooltipProvider>
       <DialogContent className="w-[20rem] max-w-[calc(100vw-2rem)]">
         <DialogHeader className="items-center gap-3 text-center">
-          <div className="flex size-15 items-center justify-center rounded-2xl bg-primary text-primary-foreground">
-            <svg
-              className="size-10"
-              viewBox="0 0 24 24"
-              fill="currentColor"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path d="M0 4.8C0 2.14903 2.14903 0 4.8 0H12.0118C13.2848 0 14.5057 0.505713 15.4059 1.40589L22.5941 8.59411C23.4943 9.49429 24 10.7152 24 11.9882V19.2C24 21.851 21.851 24 19.2 24H4.8C2.14903 24 0 21.851 0 19.2V4.8Z" />
-            </svg>
-          </div>
+          <AppLogo className="size-15" />
           <DialogTitle className="text-base font-semibold">
             {APP_NAME}
           </DialogTitle>

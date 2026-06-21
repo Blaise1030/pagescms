@@ -7,7 +7,7 @@ import type { ConfigState } from "@/contexts/config-context";
 import { RepoLayout } from "@/components/repo/repo-layout";
 import { getServerSession } from "@/lib/session-server";
 import { getToken } from "@/lib/token";
-import { Loader } from "@/components/loader";
+import { AppLoadingShell } from "@/components/app-loading-shell";
 import { ConfigGuard } from "./config-guard";
 
 export default async function Layout({
@@ -57,11 +57,7 @@ export default async function Layout({
   return (
     <ConfigProvider configPromise={configPromise}>
       <Suspense
-        fallback={
-          <Loader className="fixed inset-0 z-50 bg-background text-muted-foreground text-sm">
-            Loading
-          </Loader>
-        }
+        fallback={<AppLoadingShell />}
       >
         <RepoLayout>
           <ConfigGuard branch={decodedBranch}>
