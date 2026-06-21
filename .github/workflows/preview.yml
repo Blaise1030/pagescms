@@ -21,6 +21,7 @@ jobs:
     secrets: inherit
     with:
       worker-name: pagescms-pr-${{ github.event.pull_request.number }}
+      environment: preview
 
   comment:
     needs: deploy

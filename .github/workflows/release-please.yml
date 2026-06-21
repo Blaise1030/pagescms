@@ -38,3 +38,4 @@ jobs:
     secrets: inherit
     with:
       run-migrations: true
+      environment: production

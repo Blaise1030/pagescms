@@ -9,6 +9,9 @@ on:
       run-migrations:
         type: boolean
         default: false
+      environment:
+        type: string
+        default: ''
     outputs:
       deployment-url:
         description: Cloudflare deployment URL
@@ -61,6 +64,7 @@ on:
 
 jobs:
   deploy:
+    environment: ${{ inputs.environment }}
     runs-on: ubuntu-latest
     outputs:
       deployment-url: ${{ steps.deploy.outputs.deployment-url }}
