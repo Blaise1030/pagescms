@@ -1,0 +1,145 @@
+name: Deploy
+
+on:
+  workflow_call:
+    inputs:
+      worker-name:
+        type: string
+        default: ''
+      run-migrations:
+        type: boolean
+        default: false
+    outputs:
+      deployment-url:
+        description: Cloudflare deployment URL
+        value: ${{ jobs.deploy.outputs.deployment-url }}
+    secrets:
+      CLOUDFLARE_API_TOKEN:
+        required: true
+      CLOUDFLARE_ACCOUNT_ID:
+        required: true
+      CLOUDFLARE_WORKERS_DEV_SUBDOMAIN:
+        required: false
+      BASE_URL:
+        required: false
+      BETTER_AUTH_SECRET:
+        required: true
+      CRYPTO_KEY:
+        required: true
+      GITHUB_APP_PRIVATE_KEY:
+        required: true
+      GITHUB_APP_WEBHOOK_SECRET:
+        required: false
+      GITHUB_APP_CLIENT_SECRET:
+        required: true
+      ADMIN_EMAILS:
+        required: false
+      GITHUB_APP_ID:
+        required: true
+      GITHUB_APP_NAME:
+        required: true
+      GITHUB_APP_CLIENT_ID:
+        required: true
+      EMAIL_FROM:
+        required: false
+      CACHE_CHECK_MIN:
+        required: false
+      CONFIG_CHECK_MIN:
+        required: false
+      FILE_TTL_MIN:
+        required: false
+      PERMISSIONS_TTL_MIN:
+        required: false
+      BRANCH_HEAD_TTL_MS:
+        required: false
+      REPO_META_TTL_MS:
+        required: false
+      WEBHOOK_PUSH_INCREMENTAL_MAX_FILES:
+        required: false
+      WEBHOOK_PUSH_SCOPED_INVALIDATION_MAX_FILES:
+        required: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    outputs:
+      deployment-url: ${{ steps.deploy.outputs.deployment-url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.23.0
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Build
+        run: pnpm build
+
+      - name: Apply D1 migrations
+        if: ${{ inputs.run-migrations }}
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: d1 migrations apply pagescms --remote
+
+      - name: Set BASE_URL for preview
+        if: ${{ inputs.worker-name != '' }}
+        run: echo "BASE_URL=https://${{ inputs.worker-name }}.${{ secrets.CLOUDFLARE_WORKERS_DEV_SUBDOMAIN }}.workers.dev" >> $GITHUB_ENV
+
+      - name: Deploy to Cloudflare Workers
+        id: deploy
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: deploy${{ inputs.worker-name != '' && format(' --name {0}', inputs.worker-name) || '' }}
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
+          secrets: |
+            BASE_URL
+            BETTER_AUTH_SECRET
+            CRYPTO_KEY
+            GITHUB_APP_PRIVATE_KEY
+            GITHUB_APP_WEBHOOK_SECRET
+            GITHUB_APP_CLIENT_SECRET
+            ADMIN_EMAILS
+            GITHUB_APP_ID
+            GITHUB_APP_NAME
+            GITHUB_APP_CLIENT_ID
+            EMAIL_FROM
+            CACHE_CHECK_MIN
+            CONFIG_CHECK_MIN
+            FILE_TTL_MIN
+            PERMISSIONS_TTL_MIN
+            BRANCH_HEAD_TTL_MS
+            REPO_META_TTL_MS
+            WEBHOOK_PUSH_INCREMENTAL_MAX_FILES
+            WEBHOOK_PUSH_SCOPED_INVALIDATION_MAX_FILES
+        env:
+          BASE_URL: ${{ env.BASE_URL || secrets.BASE_URL }}
+          BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET }}
+          CRYPTO_KEY: ${{ secrets.CRYPTO_KEY }}
+          GITHUB_APP_PRIVATE_KEY: ${{ secrets.GITHUB_APP_PRIVATE_KEY }}
+          GITHUB_APP_WEBHOOK_SECRET: ${{ secrets.GITHUB_APP_WEBHOOK_SECRET }}
+          GITHUB_APP_CLIENT_SECRET: ${{ secrets.GITHUB_APP_CLIENT_SECRET }}
+          ADMIN_EMAILS: ${{ secrets.ADMIN_EMAILS }}
+          GITHUB_APP_ID: ${{ secrets.GITHUB_APP_ID }}
+          GITHUB_APP_NAME: ${{ secrets.GITHUB_APP_NAME }}
+          GITHUB_APP_CLIENT_ID: ${{ secrets.GITHUB_APP_CLIENT_ID }}
+          EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
+          CACHE_CHECK_MIN: ${{ secrets.CACHE_CHECK_MIN }}
+          CONFIG_CHECK_MIN: ${{ secrets.CONFIG_CHECK_MIN }}
+          FILE_TTL_MIN: ${{ secrets.FILE_TTL_MIN }}
+          PERMISSIONS_TTL_MIN: ${{ secrets.PERMISSIONS_TTL_MIN }}
+          BRANCH_HEAD_TTL_MS: ${{ secrets.BRANCH_HEAD_TTL_MS }}
+          REPO_META_TTL_MS: ${{ secrets.REPO_META_TTL_MS }}
+          WEBHOOK_PUSH_INCREMENTAL_MAX_FILES: ${{ secrets.WEBHOOK_PUSH_INCREMENTAL_MAX_FILES }}
+          WEBHOOK_PUSH_SCOPED_INVALIDATION_MAX_FILES: ${{ secrets.WEBHOOK_PUSH_SCOPED_INVALIDATION_MAX_FILES }}
