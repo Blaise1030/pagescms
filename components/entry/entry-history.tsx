@@ -57,7 +57,7 @@ export function EntryHistoryBlock({
   if (!history || history.length === 0) return null;
 
   return (
-    <div className="flex flex-col gap-y-1 text-sm">
+    <div className="flex w-full flex-col gap-y-1 text-sm">
       {history.slice(0, 3).map((item) => (
         <a
           href={item.html_url}

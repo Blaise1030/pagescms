@@ -639,13 +639,32 @@ export function Entry({
   }, [isBusy]);
 
   useEffect(() => {
+    if (!entryContentObject || Object.keys(previewFormValuesRef.current).length > 0) return;
+    previewFormValuesRef.current = entryContentObject as Record<string, unknown>;
+    setPreviewFormValues(entryContentObject as Record<string, unknown>);
+  }, [entryContentObject]);
+
+  useEffect(() => {
     if (!previewUrl || !iframeRef.current?.contentWindow) return;
-    const siteUrl = config?.object?.siteUrl as string;
     iframeRef.current.contentWindow.postMessage(
       { type: "cms:preview", data: previewFormValues },
-      siteUrl,
+      "*",
     );
   }, [previewFormValues, previewUrl, config?.object?.siteUrl]);
+
+  useEffect(() => {
+    if (!previewUrl) return;
+    function handleReady(event: MessageEvent) {
+      if (event.data?.type !== "cms:preview:ready") return;
+      if (!iframeRef.current?.contentWindow) return;
+      iframeRef.current.contentWindow.postMessage(
+        { type: "cms:preview", data: previewFormValuesRef.current },
+        "*",
+      );
+    }
+    window.addEventListener("message", handleReady);
+    return () => window.removeEventListener("message", handleReady);
+  }, [previewUrl]);
 
   const handleDelete = useCallback((path: string) => {
     // TODO: disable save button or freeze form while deleting?
@@ -1042,7 +1061,7 @@ export function Entry({
   };
 
   const editorContent = (
-    <div className="w-full grid items-start gap-6 px-2 py-3 pr-4">
+    <div className="w-full flex flex-col items-start gap-6 px-2 py-3 pr-4">
       {path && (
         <div className="flex gap-1">
           <Button
@@ -1166,10 +1185,11 @@ export function Entry({
               <ResizablePanel
                 collapsible
                 collapsedSize={0}
-                minSize={10}
+                defaultSize={'30%'}
+                minSize={'32%'}
                 panelRef={editorPanelRef}
                 onResize={(size) => setShowEditor(size.asPercentage > 0)}
-                className="scrollbar overflow-y-auto"
+                className="scrollbar overflow-y-auto overflow-x-hidden"
               >
                 {editorContent}
               </ResizablePanel>
@@ -1196,7 +1216,7 @@ export function Entry({
                     if (iframeRef.current?.contentWindow) {
                       iframeRef.current.contentWindow.postMessage(
                         { type: "cms:preview", data: previewFormValuesRef.current },
-                        config.object.siteUrl as string,
+                        "*",
                       );
                     }
                   }}

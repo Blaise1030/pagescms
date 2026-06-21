@@ -1,7 +1,7 @@
 export function getPreviewUrl(
   siteUrl: string | undefined,
-  previewPath: string | undefined
-): string | null {
-  if (!siteUrl || !previewPath) return null;
-  return siteUrl.replace(/\/$/, "") + previewPath;
+  previewPath: string | undefined,
+): string | undefined {
+  if (!siteUrl || !previewPath) return undefined;
+  return `${siteUrl.replace(/\/$/, "")}${previewPath}`;
 }
