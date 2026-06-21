@@ -45,7 +45,7 @@ export default function Page() {
   }
 
   return (
-    <>
+    <div className="px-2 py-3">
       {config && (
         <DocumentTitle
           title={formatRepoBranchTitle(
@@ -83,6 +83,6 @@ export default function Page() {
           </Tooltip>
         }
       />
-    </>
+    </div>
   );
 }
