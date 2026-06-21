@@ -104,6 +104,7 @@ export default async function Page({
   searchParams?: Promise<{ q?: string; page?: string }>;
 }) {
   await requireAdminSession();
+  // eslint-disable-next-line react-hooks/purity
   const nowMs = Date.now();
   const resolvedSearchParams = await searchParams;
   const query = resolvedSearchParams?.q?.trim() ?? "";

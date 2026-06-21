@@ -10,12 +10,12 @@ interface __BaseEnv_Env {
 	ADMIN_EMAILS: string;
 	BETTER_AUTH_SECRET: string;
 	CRYPTO_KEY: string;
-	GITHUB_APP_ID: string;
-	GITHUB_APP_NAME: string;
-	GITHUB_APP_PRIVATE_KEY: string;
-	GITHUB_APP_WEBHOOK_SECRET: string;
-	GITHUB_APP_CLIENT_ID: string;
-	GITHUB_APP_CLIENT_SECRET: string;
+	A_GITHUB_APP_ID: string;
+	A_GITHUB_APP_NAME: string;
+	A_GITHUB_APP_PRIVATE_KEY: string;
+	A_GITHUB_APP_WEBHOOK_SECRET: string;
+	A_GITHUB_APP_CLIENT_ID: string;
+	A_GITHUB_APP_CLIENT_SECRET: string;
 	EMAIL_FROM: string;
 }
 declare namespace Cloudflare {
@@ -29,7 +29,7 @@ type StringifyValues<EnvType extends Record<string, unknown>> = {
 	[Binding in keyof EnvType]: EnvType[Binding] extends string ? EnvType[Binding] : string;
 };
 declare namespace NodeJS {
-	interface ProcessEnv extends StringifyValues<Pick<Cloudflare.Env, "BASE_URL" | "ADMIN_EMAILS" | "BETTER_AUTH_SECRET" | "CRYPTO_KEY" | "GITHUB_APP_ID" | "GITHUB_APP_NAME" | "GITHUB_APP_PRIVATE_KEY" | "GITHUB_APP_WEBHOOK_SECRET" | "GITHUB_APP_CLIENT_ID" | "GITHUB_APP_CLIENT_SECRET" | "EMAIL_FROM">> {}
+	interface ProcessEnv extends StringifyValues<Pick<Cloudflare.Env, "BASE_URL" | "ADMIN_EMAILS" | "BETTER_AUTH_SECRET" | "CRYPTO_KEY" | "A_GITHUB_APP_ID" | "A_GITHUB_APP_NAME" | "A_GITHUB_APP_PRIVATE_KEY" | "A_GITHUB_APP_WEBHOOK_SECRET" | "A_GITHUB_APP_CLIENT_ID" | "A_GITHUB_APP_CLIENT_SECRET" | "EMAIL_FROM">> {}
 }
 
 // Begin runtime types

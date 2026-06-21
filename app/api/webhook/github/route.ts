@@ -28,9 +28,9 @@ export async function POST(request: Request) {
     const event = request.headers.get("X-GitHub-Event");
     const body = await request.text();
 
-    const secret = process.env.GITHUB_APP_WEBHOOK_SECRET;
+    const secret = process.env.A_GITHUB_APP_WEBHOOK_SECRET;
     if (!secret) {
-      console.error("Missing GITHUB_APP_WEBHOOK_SECRET");
+      console.error("Missing A_GITHUB_APP_WEBHOOK_SECRET");
       return Response.json(null, { status: 500 });
     }
 

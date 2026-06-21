@@ -61,8 +61,8 @@ const getToken = async (
 // Get the GitHub App installation token for a specific repository.
 const getInstallationToken = async (owner: string, repo: string) => {
   const app = new App({
-    appId: process.env.GITHUB_APP_ID!,
-    privateKey: process.env.GITHUB_APP_PRIVATE_KEY!,
+    appId: process.env.A_GITHUB_APP_ID!,
+    privateKey: process.env.A_GITHUB_APP_PRIVATE_KEY!,
   });
 
   const repoInstallation = await app.octokit.request(

@@ -1,13 +1,13 @@
 <svg width="480" height="480" viewBox="0 0 480 480" fill="none" xmlns="http://www.w3.org/2000/svg">
   <style>
     :root {
-      --icon-bg: oklch(0.60 0.13 163);
-      --icon-fg: oklch(0.98 0.02 166);
+      --icon-bg: #000000;
+      --icon-fg: #ffffff;
     }
     @media (prefers-color-scheme: dark) {
       :root {
-        --icon-bg: oklch(0.70 0.15 162);
-        --icon-fg: oklch(0.26 0.05 173);
+        --icon-bg: #ffffff;
+        --icon-fg: #000000;
       }
     }
   </style>
