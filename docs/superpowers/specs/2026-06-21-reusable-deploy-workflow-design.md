@@ -32,13 +32,14 @@ Extract a reusable `workflow_call` workflow. Each caller sets `environment: prev
 
 **Secrets declared in `workflow_call`:**
 
-All keys are stored as GitHub Secrets and uploaded to the Worker via `wrangler secret put` for unified control — no values appear in deploy command logs or wrangler config.
+All keys are stored as GitHub Secrets. Everything is uploaded to the Worker via `wrangler secret put` — no `--var` flags, no values in deploy command logs.
 
 | Name | Required | Notes |
 |---|---|---|
-| `CLOUDFLARE_API_TOKEN` | yes | Wrangler auth — not uploaded as Worker secret |
-| `CLOUDFLARE_ACCOUNT_ID` | yes | Wrangler account target — not uploaded as Worker secret |
+| `CLOUDFLARE_API_TOKEN` | yes | Wrangler auth only — not uploaded as Worker secret |
+| `CLOUDFLARE_ACCOUNT_ID` | yes | Wrangler account target only — not uploaded as Worker secret |
 | `CLOUDFLARE_WORKERS_DEV_SUBDOMAIN` | no | Used only to construct `BASE_URL` for preview — not uploaded as Worker secret |
+| `BASE_URL` | yes | Static GitHub Secret for production. For preview: constructed dynamically in a shell step (`https://<worker-name>.<subdomain>.workers.dev`) and written to `$GITHUB_ENV` so wrangler-action picks it up from the environment |
 | `BETTER_AUTH_SECRET` | yes | Uploaded as Worker secret |
 | `CRYPTO_KEY` | yes | Uploaded as Worker secret |
 | `GITHUB_APP_PRIVATE_KEY` | yes | Uploaded as Worker secret |
@@ -58,7 +59,7 @@ All keys are stored as GitHub Secrets and uploaded to the Worker via `wrangler s
 | `WEBHOOK_PUSH_INCREMENTAL_MAX_FILES` | no | Uploaded as Worker secret (optional tuning) |
 | `WEBHOOK_PUSH_SCOPED_INVALIDATION_MAX_FILES` | no | Uploaded as Worker secret (optional tuning) |
 
-> `BASE_URL` is constructed dynamically from `worker-name` + `CLOUDFLARE_WORKERS_DEV_SUBDOMAIN` and passed via `--var` in the deploy command. `DATABASE_URL` is local dev only — not needed in CI.
+> `DATABASE_URL` is local dev only — not needed in CI.
 
 **Outputs:**
 
@@ -74,10 +75,10 @@ All keys are stored as GitHub Secrets and uploaded to the Worker via `wrangler s
 5. `pnpm lint`
 6. `pnpm build`
 7. `wrangler d1 migrations apply pagescms --remote` — only when `run-migrations: true`
-8. Shell step to build deploy command — appends `--name` and `--var BASE_URL:...` when `worker-name` is non-empty
-9. `cloudflare/wrangler-action@v3` — runs the constructed command with:
+8. Shell step: if `worker-name` is set, construct `BASE_URL` and write to `$GITHUB_ENV` so it overrides the static secret value for this deployment
+9. `cloudflare/wrangler-action@v3` — `deploy --name <worker-name>` (when set) with:
    - `secrets:` input listing all Worker secret names (one per line)
-   - `env:` block mapping every secret from `${{ secrets.KEY }}` so wrangler can read them
+   - `env:` block mapping every static secret from `${{ secrets.KEY }}`; `BASE_URL` is already in env from step 8 when in preview
 
 ## `preview.yml` (updated)
 
@@ -115,19 +116,33 @@ permissions:
 
 Settings → Environments → create two environments. Both need the full set of secrets; values differ per environment.
 
-### Secrets (sensitive — uploaded to Worker via `wrangler secret put`)
+All values are stored as GitHub Secrets. The table below lists every secret that must be configured per environment.
 
-| Secret name | `preview` | `production` |
-|---|---|---|
-| `CLOUDFLARE_API_TOKEN` | preview token | production token |
-| `CLOUDFLARE_ACCOUNT_ID` | preview account | production account |
-| `CLOUDFLARE_WORKERS_DEV_SUBDOMAIN` | your subdomain | *(not needed)* |
-| `BETTER_AUTH_SECRET` | preview value | production value |
-| `CRYPTO_KEY` | preview value | production value |
-| `GITHUB_APP_PRIVATE_KEY` | preview app key | production app key |
-| `GITHUB_APP_WEBHOOK_SECRET` | preview webhook secret | production webhook secret |
-| `GITHUB_APP_CLIENT_SECRET` | preview client secret | production client secret |
+| Secret name | `preview` | `production` | Notes |
+|---|---|---|---|
+| `CLOUDFLARE_API_TOKEN` | preview token | production token | Wrangler auth only |
+| `CLOUDFLARE_ACCOUNT_ID` | preview account ID | production account ID | Wrangler target only |
+| `CLOUDFLARE_WORKERS_DEV_SUBDOMAIN` | your subdomain | *(omit)* | Used to construct preview `BASE_URL` |
+| `BASE_URL` | *(omit — constructed dynamically)* | e.g. `https://pagescms.example.com` | Preview value is generated at runtime |
+| `BETTER_AUTH_SECRET` | preview value | production value | Worker secret |
+| `CRYPTO_KEY` | preview value | production value | Worker secret |
+| `GITHUB_APP_PRIVATE_KEY` | preview app key | production app key | Worker secret |
+| `GITHUB_APP_WEBHOOK_SECRET` | preview value | production value | Worker secret |
+| `GITHUB_APP_CLIENT_SECRET` | preview value | production value | Worker secret |
+| `ADMIN_EMAILS` | preview admins | production admins | Worker secret |
+| `GITHUB_APP_ID` | preview app ID | production app ID | Worker secret |
+| `GITHUB_APP_NAME` | preview app name | production app name | Worker secret |
+| `GITHUB_APP_CLIENT_ID` | preview client ID | production client ID | Worker secret |
+| `EMAIL_FROM` | preview sender | production sender | Worker secret |
+| `CACHE_CHECK_MIN` | optional | optional | Worker secret |
+| `CONFIG_CHECK_MIN` | optional | optional | Worker secret |
+| `FILE_TTL_MIN` | optional | optional | Worker secret |
+| `PERMISSIONS_TTL_MIN` | optional | optional | Worker secret |
+| `BRANCH_HEAD_TTL_MS` | optional | optional | Worker secret |
+| `REPO_META_TTL_MS` | optional | optional | Worker secret |
+| `WEBHOOK_PUSH_INCREMENTAL_MAX_FILES` | optional | optional | Worker secret |
+| `WEBHOOK_PUSH_SCOPED_INVALIDATION_MAX_FILES` | optional | optional | Worker secret |
 
-All of the above secrets must be set in both environments (with environment-appropriate values). Optional tuning secrets can be omitted if the application defaults are acceptable.
+Optional tuning secrets can be omitted if application defaults are acceptable.
 
 This is required for secret scoping to work. No code change can substitute for it.
