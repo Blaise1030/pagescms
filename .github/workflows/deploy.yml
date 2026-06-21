@@ -45,7 +45,7 @@ jobs:
 
       - name: Apply D1 migrations
         if: ${{ inputs.run-migrations }}
-        uses: cloudflare/wrangler-action@v3
+        uses: cloudflare/wrangler-action@v4
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -57,7 +57,7 @@ jobs:
 
       - name: Deploy to Cloudflare Workers
         id: deploy
-        uses: cloudflare/wrangler-action@v3
+        uses: cloudflare/wrangler-action@v4
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -68,7 +68,6 @@ jobs:
             BETTER_AUTH_SECRET
             CRYPTO_KEY
             A_GITHUB_APP_PRIVATE_KEY
-            A_GITHUB_APP_WEBHOOK_SECRET
             A_GITHUB_APP_CLIENT_SECRET
             ADMIN_EMAILS
             A_GITHUB_APP_ID
@@ -88,7 +87,6 @@ jobs:
           BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET }}
           CRYPTO_KEY: ${{ secrets.CRYPTO_KEY }}
           A_GITHUB_APP_PRIVATE_KEY: ${{ secrets.A_GITHUB_APP_PRIVATE_KEY }}
-          A_GITHUB_APP_WEBHOOK_SECRET: ${{ secrets.A_GITHUB_APP_WEBHOOK_SECRET }}
           A_GITHUB_APP_CLIENT_SECRET: ${{ secrets.A_GITHUB_APP_CLIENT_SECRET }}
           ADMIN_EMAILS: ${{ secrets.ADMIN_EMAILS }}
           A_GITHUB_APP_ID: ${{ secrets.A_GITHUB_APP_ID }}
