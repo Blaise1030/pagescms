@@ -5,29 +5,39 @@
 import { Config } from "@/types/config";
 import { db } from "@/db";
 import { configTable } from "@/db/schema";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { createOctokitInstance } from "@/lib/utils/octokit";
 import { configVersion, normalizeConfig, parseConfig } from "@/lib/config";
 import { decodeBase64Utf8 } from "@/lib/encoding";
+
+const CONFIG_CACHE_TTL_MS =
+  parseInt(process.env.CONFIG_CACHE_TTL ?? "30", 10) * 1000;
+
+const configMemCache = new Map<string, { value: Config; expiresAt: number }>();
 
 const getConfigFromDb = async (
   owner: string,
   repo: string,
   branch: string,
 ): Promise<Config | null> => {
-  if (!owner || !repo || !branch) throw new Error(`Owner, repo, and branch must all be provided.`);
-  
+  if (!owner || !repo || !branch)
+    throw new Error(`Owner, repo, and branch must all be provided.`);
+
+  const cacheKey = `${owner}::${repo}::${branch}`;
+  const cached = configMemCache.get(cacheKey);
+  if (cached && cached.expiresAt > Date.now()) return cached.value;
+
   const config = await db.query.configTable.findFirst({
     where: and(
-      sql`lower(${configTable.owner}) = lower(${owner})`,
-      sql`lower(${configTable.repo}) = lower(${repo})`,
+      eq(configTable.owner, owner.toLowerCase()),
+      eq(configTable.repo, repo.toLowerCase()),
       eq(configTable.branch, branch),
-    )
+    ),
   });
-  
+
   if (!config) return null;
 
-  const parsedConfig = {
+  const parsedConfig: Config = {
     owner: config.owner,
     repo: config.repo,
     branch: config.branch,
@@ -37,6 +47,11 @@ const getConfigFromDb = async (
     lastCheckedAt: config.lastCheckedAt,
   };
 
+  configMemCache.set(cacheKey, {
+    value: parsedConfig,
+    expiresAt: Date.now() + CONFIG_CACHE_TTL_MS,
+  });
+
   return parsedConfig;
 };
 
@@ -44,8 +59,8 @@ const saveConfig = async (
   config: Config,
 ): Promise<Config> => {
   await db.insert(configTable).values({
-    owner: config.owner,
-    repo: config.repo,
+    owner: config.owner.toLowerCase(),
+    repo: config.repo.toLowerCase(),
     branch: config.branch,
     sha: config.sha,
     version: config.version,
@@ -61,6 +76,8 @@ const saveConfig = async (
     },
   });
 
+  configMemCache.delete(`${config.owner.toLowerCase()}::${config.repo.toLowerCase()}::${config.branch}`);
+
   return config;
 }
 
@@ -74,11 +91,13 @@ const updateConfig = async (
     lastCheckedAt: new Date(),
   }).where(
     and(
-      sql`lower(${configTable.owner}) = lower(${config.owner})`,
-      sql`lower(${configTable.repo}) = lower(${config.repo})`,
-      eq(configTable.branch, config.branch)
-    )
+      eq(configTable.owner, config.owner.toLowerCase()),
+      eq(configTable.repo, config.repo.toLowerCase()),
+      eq(configTable.branch, config.branch),
+    ),
   );
+
+  configMemCache.delete(`${config.owner.toLowerCase()}::${config.repo.toLowerCase()}::${config.branch}`);
 
   return config;
 }
@@ -92,8 +111,8 @@ const touchConfigCheck = async (
     lastCheckedAt: new Date(),
   }).where(
     and(
-      sql`lower(${configTable.owner}) = lower(${owner})`,
-      sql`lower(${configTable.repo}) = lower(${repo})`,
+      eq(configTable.owner, owner.toLowerCase()),
+      eq(configTable.repo, repo.toLowerCase()),
       eq(configTable.branch, branch),
     ),
   );
@@ -231,8 +250,8 @@ const getConfig = async (
           if (!latest) {
             await db.delete(configTable).where(
               and(
-                sql`lower(${configTable.owner}) = lower(${normalizedOwner})`,
-                sql`lower(${configTable.repo}) = lower(${normalizedRepo})`,
+                eq(configTable.owner, normalizedOwner),
+                eq(configTable.repo, normalizedRepo),
                 eq(configTable.branch, branch),
               ),
             );
@@ -267,8 +286,8 @@ const getConfig = async (
       if (cachedConfig) {
         await db.delete(configTable).where(
           and(
-            sql`lower(${configTable.owner}) = lower(${normalizedOwner})`,
-            sql`lower(${configTable.repo}) = lower(${normalizedRepo})`,
+            eq(configTable.owner, normalizedOwner),
+            eq(configTable.repo, normalizedRepo),
             eq(configTable.branch, branch),
           ),
         );

@@ -307,8 +307,8 @@ const getVerifiedDirectFolderContexts = async (
 
   const metas = await db.query.cacheFileMetaTable.findMany({
     where: and(
-      sql`lower(${cacheFileMetaTable.owner}) = lower(${owner})`,
-      sql`lower(${cacheFileMetaTable.repo}) = lower(${repo})`,
+      eq(cacheFileMetaTable.owner, owner.toLowerCase()),
+      eq(cacheFileMetaTable.repo, repo.toLowerCase()),
       eq(cacheFileMetaTable.branch, branch),
       inArray(cacheFileMetaTable.path, uniqueFolderPaths),
       inArray(cacheFileMetaTable.context, ["collection", "media"]),
@@ -1111,6 +1111,77 @@ const getMediaCache = async (
   return entries;
 };
 
+const ENTRY_CACHE_TTL_MS =
+  parseInt(process.env.ENTRY_CACHE_TTL ?? "300", 10) * 1000;
+
+const getCachedEntryContent = async (
+  owner: string,
+  repo: string,
+  branch: string,
+  path: string,
+  ttlMs = ENTRY_CACHE_TTL_MS,
+): Promise<{ content: string; sha: string } | null> => {
+  const row = await db.query.cacheFileTable.findFirst({
+    where: and(
+      eq(cacheFileTable.owner, owner.toLowerCase()),
+      eq(cacheFileTable.repo, repo.toLowerCase()),
+      eq(cacheFileTable.branch, branch),
+      eq(cacheFileTable.path, path),
+    ),
+  });
+
+  if (!row || !row.content || !row.sha) return null;
+  if (row.updatedAt.getTime() + ttlMs < Date.now()) return null;
+
+  return { content: row.content, sha: row.sha };
+};
+
+const setCachedEntryContent = async (
+  owner: string,
+  repo: string,
+  branch: string,
+  path: string,
+  content: string,
+  sha: string,
+  size: number,
+): Promise<void> => {
+  const lowerOwner = owner.toLowerCase();
+  const lowerRepo = repo.toLowerCase();
+  const parentPath = path.includes("/") ? path.substring(0, path.lastIndexOf("/")) : "";
+  const name = path.includes("/") ? path.substring(path.lastIndexOf("/") + 1) : path;
+
+  await db
+    .insert(cacheFileTable)
+    .values({
+      context: "entry",
+      owner: lowerOwner,
+      repo: lowerRepo,
+      branch,
+      parentPath,
+      name,
+      path,
+      type: "file",
+      content,
+      sha,
+      size,
+      updatedAt: new Date(),
+    })
+    .onConflictDoUpdate({
+      target: [
+        cacheFileTable.owner,
+        cacheFileTable.repo,
+        cacheFileTable.branch,
+        cacheFileTable.path,
+      ],
+      set: {
+        content,
+        sha,
+        size,
+        updatedAt: new Date(),
+      },
+    });
+};
+
 export {
   getBranchHeadInfo,
   getBranchHeadSha,
@@ -1124,4 +1195,6 @@ export {
   getCollectionCache,
   getMediaCache,
   ensureFileCacheFreshness,
+  getCachedEntryContent,
+  setCachedEntryContent,
 };
