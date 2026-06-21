@@ -188,7 +188,7 @@ export function RepoTemplates({ defaultAccount }: { defaultAccount?: any }) {
                   <a
                     href={`https://github.com/${template.repository}`}
                     target="_blank"
-                    className="border rounded-lg transition-all hover:bg-accent focus:bg-accent outline-none flex items-center overflow-hidden relative"
+                    className="border rounded-lg transition-colors hover:bg-accent focus:bg-accent outline-none flex items-center overflow-hidden relative"
                   >
                     <img
                       src={template.thumbnail}

@@ -64,7 +64,7 @@ export function RepoLatest() {
           >{visit.repo}</Link>
           <div className="text-muted-foreground truncate">{formatDistanceToNow(new Date(visit.timestamp * 1000))} ago</div>
           <Link
-            className={cn("ml-auto", buttonVariants({ variant: "outline", size: "xs"}))}
+            className={cn("ml-auto", buttonVariants({ variant: "outline", size: "sm"}))}
             href={`/${visit.owner}/${visit.repo}/${encodeURIComponent(visit.branch)}`}
           >
             Open

@@ -378,7 +378,7 @@ export function Collaborators({
             <Skeleton className="h-5 w-24 text-left rounded" />
             <Button
               variant="outline"
-              size="icon-xs"
+              size="icon-sm"
               className="ml-auto"
               disabled
             >
@@ -441,7 +441,7 @@ export function Collaborators({
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button
-                      size="icon-xs"
+                      size="icon-sm"
                       variant="outline"
                       className="ml-auto"
                       disabled={

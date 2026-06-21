@@ -241,7 +241,7 @@ function RepoSwitcher() {
             )}
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild>
-              <Link href={`/${owner}/${repo}/${encodeURIComponent(currentBranch)}/configuration`}>Settings</Link>
+              <Link href={"/settings"}>Settings</Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
               <Link href="/">All projects</Link>
