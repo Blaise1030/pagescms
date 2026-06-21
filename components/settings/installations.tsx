@@ -16,32 +16,32 @@ const Installations = () => {
 
   if (!user || !user.accounts) {
     return (
-      <div className="text-sm text-muted-foreground h-[50px] px-6 flex justify-center items-center bg-accent rounded-md">
-        <Ban className="h-4 w-4 mr-2" />
+      <div className="rounded-md border px-3 py-4 flex items-center gap-x-2 text-xs text-muted-foreground">
+        <Ban className="h-3.5 w-3.5 shrink-0" />
         No account with the Github application installed.
       </div>
     );
   }
 
   return (
-    <ul>
+    <div className="rounded-md border divide-y">
       {user.accounts.map((account) => (
-        <li
-          className="flex items-center gap-x-3 border border-b-0 last:border-b first:rounded-t-md last:rounded-b-md px-3 py-2 text-sm"
+        <div
+          className="flex items-center gap-x-3 px-3 py-2.5 text-sm"
           key={`${account.login}-${account.installationId}`}
         >
           <div className="flex gap-x-2 items-center">
             <img
               src={`https://github.com/${account.login}.png`}
               alt={`${account.login}'s avatar`}
-              className="h-6 w-6 rounded"
+              className="h-5 w-5 rounded"
             />
-            <span className="font-medium truncate hover:underline">{account.login}</span>
+            <span className="text-xs font-medium truncate">{account.login}</span>
           </div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button size="icon-xs" variant="outline" className="ml-auto">
-                <EllipsisVertical className="h-4 w-4" />
+              <Button size="icon-sm" variant="ghost" className="ml-auto">
+                <EllipsisVertical className="h-3.5 w-3.5" />
                 <span className="sr-only">Installation actions</span>
               </Button>
             </DropdownMenuTrigger>
@@ -58,9 +58,9 @@ const Installations = () => {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-        </li>
+        </div>
       ))}
-    </ul>
+    </div>
   );
 };
 

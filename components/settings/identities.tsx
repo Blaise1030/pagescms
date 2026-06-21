@@ -83,82 +83,78 @@ export function Identities({
   };
 
   return (
-    <ul>
-      <li className="flex items-center gap-x-3 border border-b-0 first:rounded-t-md px-3 py-2 text-sm">
-        <div className="flex items-center gap-x-2">
-          <Mail className="h-4 w-4" />
-          <span className="font-medium">Email</span>
+    <div className="rounded-md border divide-y">
+      <div className="flex items-center gap-x-3 px-3 py-2.5 text-sm">
+        <div className="flex items-center gap-x-2 min-w-[100px]">
+          <Mail className="h-4 w-4 text-muted-foreground" />
+          <span className="font-medium text-xs">Email</span>
         </div>
-        <div className="ml-2 truncate text-muted-foreground">{email}</div>
-      </li>
-      <li className="flex items-center gap-x-3 border first:rounded-t-md last:rounded-b-md px-3 py-2 text-sm">
-        <div
-          className={cn(
-            "flex items-center gap-x-2",
-            !githubConnected && "text-muted-foreground",
-          )}
-        >
-          <Github className="h-4 w-4" />
-          <span className="font-medium">GitHub</span>
+        <span className="truncate text-xs text-muted-foreground">{email}</span>
+      </div>
+      <div className="flex items-center gap-x-3 px-3 py-2.5 text-sm">
+        <div className={cn("flex items-center gap-x-2 min-w-[100px]", !githubConnected && "text-muted-foreground")}>
+          <Github className="h-4 w-4 text-muted-foreground" />
+          <span className="font-medium text-xs">GitHub</span>
         </div>
         {githubConnected && (
-          <div className="ml-2 truncate text-muted-foreground">
+          <span className="truncate text-xs text-muted-foreground">
             {githubUsername ? `@${githubUsername}` : "Connected"}
-          </div>
+          </span>
         )}
-        {!githubConnected ? (
-          <Button
-            size="sm"
-            variant="outline"
-            className="ml-auto h-8"
-            onClick={handleConnectGithub}
-            disabled={pendingAction !== null}
-          >
-            Connect
-            {pendingAction === "connect" && (
-              <Loader className="h-4 w-4 animate-spin" />
-            )}
-          </Button>
-        ) : (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                size="icon-xs"
-                variant="outline"
-                className="ml-auto"
-                disabled={pendingAction !== null}
-              >
-                {pendingAction === "disconnect" ? (
-                  <Loader className="h-4 w-4 animate-spin" />
-                ) : (
-                  <EllipsisVertical className="h-4 w-4" />
-                )}
-                <span className="sr-only">GitHub actions</span>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              {githubManageUrl && (
-                <>
-                  <DropdownMenuItem asChild>
-                    <a href={githubManageUrl} target="_blank" rel="noreferrer">
-                      Manage on GitHub
-                      <ArrowUpRight className="size-3 text-muted-foreground ml-auto" />
-                    </a>
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                </>
+        <div className="ml-auto">
+          {!githubConnected ? (
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 text-xs"
+              onClick={handleConnectGithub}
+              disabled={pendingAction !== null}
+            >
+              Connect
+              {pendingAction === "connect" && (
+                <Loader className="h-3 w-3 animate-spin" />
               )}
-              <DropdownMenuItem
-                variant="destructive"
-                onClick={handleDisconnectGithub}
-                disabled={pendingAction !== null}
-              >
-                Disconnect
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
-      </li>
-    </ul>
+            </Button>
+          ) : (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  size="icon-sm"
+                  variant="ghost"
+                  disabled={pendingAction !== null}
+                >
+                  {pendingAction === "disconnect" ? (
+                    <Loader className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <EllipsisVertical className="h-3.5 w-3.5" />
+                  )}
+                  <span className="sr-only">GitHub actions</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {githubManageUrl && (
+                  <>
+                    <DropdownMenuItem asChild>
+                      <a href={githubManageUrl} target="_blank" rel="noreferrer">
+                        Manage on GitHub
+                        <ArrowUpRight className="size-3 text-muted-foreground ml-auto" />
+                      </a>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                  </>
+                )}
+                <DropdownMenuItem
+                  variant="destructive"
+                  onClick={handleDisconnectGithub}
+                  disabled={pendingAction !== null}
+                >
+                  Disconnect
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }

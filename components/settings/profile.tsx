@@ -4,22 +4,9 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { getInitialsFromName } from "@/lib/utils/avatar";
-import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-} from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Loader } from "lucide-react";
 
 type ProfileProps = {
@@ -34,7 +21,9 @@ export function Profile({ name, email, githubUsername }: ProfileProps) {
   const [isSaving, setIsSaving] = useState(false);
 
   const initialName = name?.trim() || "";
-  const canSave = displayName.trim().length > 0 && displayName.trim() !== initialName && !isSaving;
+  const isDirty = displayName.trim() !== initialName;
+
+  const canSave = displayName.trim().length > 0 && isDirty && !isSaving;
   const avatarLabel = displayName.trim() || email;
 
   const handleSave = async () => {
@@ -46,7 +35,9 @@ export function Profile({ name, email, githubUsername }: ProfileProps) {
       const response = await fetch("/api/auth/update-user", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: nextName }),
+        body: JSON.stringify({
+          name: nextName,
+        }),
       });
       const payload = await response.json().catch(() => null);
       if (!response.ok || !payload?.status) {
@@ -64,69 +55,58 @@ export function Profile({ name, email, githubUsername }: ProfileProps) {
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Profile</CardTitle>
-        <CardDescription>Manage the information displayed to other users.</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form
-          className="w-full"
-          onSubmit={(event) => {
-            event.preventDefault();
-            void handleSave();
-          }}
-        >
-          <div className="grid w-full items-center gap-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="name" className="text-right">
-                Name
-              </Label>
-              <div className="col-span-3">
-                <Input
-                  id="name"
-                  name="name"
-                  value={displayName}
-                  onChange={(event) => setDisplayName(event.target.value)}
-                  maxLength={120}
-                  disabled={isSaving}
-                />
-              </div>
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="picture" className="text-right">
-                Picture
-              </Label>
-              <div className="col-span-3">
-                <Avatar className="h-24 w-24 rounded-md">
-                  <AvatarImage
-                    src={
-                      githubUsername
-                        ? `https://github.com/${githubUsername}.png`
-                        : `https://unavatar.io/${email}?fallback=false`
-                    }
-                    alt={avatarLabel}
-                  />
-                  <AvatarFallback className="rounded-md">
-                    {getInitialsFromName(avatarLabel)}
-                  </AvatarFallback>
-                </Avatar>
-              </div>
-            </div>
-          </div>
-        </form>
-      </CardContent>
-      <CardFooter>
-        <Button
-          size="sm"
-          className="ml-auto"
-          onClick={() => void handleSave()}
-          disabled={!canSave}
-        >
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        void handleSave();
+      }}
+    >
+      <div className="rounded-lg border bg-card divide-y divide-border overflow-hidden">
+        {/* Profile picture */}
+        <div className="flex items-center justify-between px-4 py-2.5">
+          <span className="text-sm font-medium">Profile picture</span>
+          <Avatar className="h-9 w-9 rounded-full">
+            <AvatarImage
+              src={
+                githubUsername
+                  ? `https://github.com/${githubUsername}.png`
+                  : `https://unavatar.io/${email}?fallback=false`
+              }
+              alt={avatarLabel}
+            />
+            <AvatarFallback className="rounded-full text-xs">
+              {getInitialsFromName(avatarLabel)}
+            </AvatarFallback>
+          </Avatar>
+        </div>
+
+        {/* Email */}
+        <div className="flex items-center justify-between px-4 py-2.5">
+          <span className="text-sm font-medium">Email</span>
+          <span className="text-sm text-muted-foreground">{email}</span>
+        </div>
+
+        {/* Full name */}
+        <div className="flex items-center justify-between gap-4 px-4 py-2.5">
+          <span className="text-sm font-medium shrink-0">Full name</span>
+          <Input
+            id="name"
+            name="name"
+            value={displayName}
+            onChange={(e) => setDisplayName(e.target.value)}
+            maxLength={120}
+            disabled={isSaving}
+            className="max-w-[260px] h-8 text-sm"
+          />
+        </div>
+      </div>
+
+      <div className="flex justify-end mt-3">
+        <Button size="sm" type="submit" disabled={!canSave}>
+          {isSaving && <Loader className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
           Save profile
-          {isSaving && <Loader className="ml-2 h-4 w-4 animate-spin" />}
         </Button>
-      </CardFooter>
-    </Card>
+      </div>
+    </form>
   );
 }
