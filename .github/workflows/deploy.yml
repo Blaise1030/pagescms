@@ -16,51 +16,7 @@ on:
       deployment-url:
         description: Cloudflare deployment URL
         value: ${{ jobs.deploy.outputs.deployment-url }}
-    secrets:
-      CLOUDFLARE_API_TOKEN:
-        required: true
-      CLOUDFLARE_ACCOUNT_ID:
-        required: true
-      CLOUDFLARE_WORKERS_DEV_SUBDOMAIN:
-        required: false
-      BASE_URL:
-        required: false
-      BETTER_AUTH_SECRET:
-        required: true
-      CRYPTO_KEY:
-        required: true
-      A_GITHUB_APP_PRIVATE_KEY:
-        required: true
-      A_GITHUB_APP_WEBHOOK_SECRET:
-        required: false
-      A_GITHUB_APP_CLIENT_SECRET:
-        required: true
-      ADMIN_EMAILS:
-        required: false
-      A_GITHUB_APP_ID:
-        required: true
-      A_GITHUB_APP_NAME:
-        required: true
-      A_GITHUB_APP_CLIENT_ID:
-        required: true
-      EMAIL_FROM:
-        required: false
-      CACHE_CHECK_MIN:
-        required: false
-      CONFIG_CHECK_MIN:
-        required: false
-      FILE_TTL_MIN:
-        required: false
-      PERMISSIONS_TTL_MIN:
-        required: false
-      BRANCH_HEAD_TTL_MS:
-        required: false
-      REPO_META_TTL_MS:
-        required: false
-      WEBHOOK_PUSH_INCREMENTAL_MAX_FILES:
-        required: false
-      WEBHOOK_PUSH_SCOPED_INVALIDATION_MAX_FILES:
-        required: false
+
 
 jobs:
   deploy:
