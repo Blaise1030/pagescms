@@ -26,19 +26,19 @@ on:
         required: true
       CRYPTO_KEY:
         required: true
-      GITHUB_APP_PRIVATE_KEY:
+      A_GITHUB_APP_PRIVATE_KEY:
         required: true
-      GITHUB_APP_WEBHOOK_SECRET:
+      A_GITHUB_APP_WEBHOOK_SECRET:
         required: false
-      GITHUB_APP_CLIENT_SECRET:
+      A_GITHUB_APP_CLIENT_SECRET:
         required: true
       ADMIN_EMAILS:
         required: false
-      GITHUB_APP_ID:
+      A_GITHUB_APP_ID:
         required: true
-      GITHUB_APP_NAME:
+      A_GITHUB_APP_NAME:
         required: true
-      GITHUB_APP_CLIENT_ID:
+      A_GITHUB_APP_CLIENT_ID:
         required: true
       EMAIL_FROM:
         required: false
@@ -107,13 +107,13 @@ jobs:
             BASE_URL
             BETTER_AUTH_SECRET
             CRYPTO_KEY
-            GITHUB_APP_PRIVATE_KEY
-            GITHUB_APP_WEBHOOK_SECRET
-            GITHUB_APP_CLIENT_SECRET
+            A_GITHUB_APP_PRIVATE_KEY
+            A_GITHUB_APP_WEBHOOK_SECRET
+            A_GITHUB_APP_CLIENT_SECRET
             ADMIN_EMAILS
-            GITHUB_APP_ID
-            GITHUB_APP_NAME
-            GITHUB_APP_CLIENT_ID
+            A_GITHUB_APP_ID
+            A_GITHUB_APP_NAME
+            A_GITHUB_APP_CLIENT_ID
             EMAIL_FROM
             CACHE_CHECK_MIN
             CONFIG_CHECK_MIN
@@ -127,13 +127,13 @@ jobs:
           BASE_URL: ${{ env.BASE_URL || secrets.BASE_URL }}
           BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET }}
           CRYPTO_KEY: ${{ secrets.CRYPTO_KEY }}
-          GITHUB_APP_PRIVATE_KEY: ${{ secrets.GITHUB_APP_PRIVATE_KEY }}
-          GITHUB_APP_WEBHOOK_SECRET: ${{ secrets.GITHUB_APP_WEBHOOK_SECRET }}
-          GITHUB_APP_CLIENT_SECRET: ${{ secrets.GITHUB_APP_CLIENT_SECRET }}
+          A_GITHUB_APP_PRIVATE_KEY: ${{ secrets.A_GITHUB_APP_PRIVATE_KEY }}
+          A_GITHUB_APP_WEBHOOK_SECRET: ${{ secrets.A_GITHUB_APP_WEBHOOK_SECRET }}
+          A_GITHUB_APP_CLIENT_SECRET: ${{ secrets.A_GITHUB_APP_CLIENT_SECRET }}
           ADMIN_EMAILS: ${{ secrets.ADMIN_EMAILS }}
-          GITHUB_APP_ID: ${{ secrets.GITHUB_APP_ID }}
-          GITHUB_APP_NAME: ${{ secrets.GITHUB_APP_NAME }}
-          GITHUB_APP_CLIENT_ID: ${{ secrets.GITHUB_APP_CLIENT_ID }}
+          A_GITHUB_APP_ID: ${{ secrets.A_GITHUB_APP_ID }}
+          A_GITHUB_APP_NAME: ${{ secrets.A_GITHUB_APP_NAME }}
+          A_GITHUB_APP_CLIENT_ID: ${{ secrets.A_GITHUB_APP_CLIENT_ID }}
           EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
           CACHE_CHECK_MIN: ${{ secrets.CACHE_CHECK_MIN }}
           CONFIG_CHECK_MIN: ${{ secrets.CONFIG_CHECK_MIN }}
