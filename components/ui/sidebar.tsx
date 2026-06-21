@@ -838,6 +838,8 @@ export {
   SidebarRail,
   SidebarSeparator,
   SidebarTrigger,
+  getSidebarWidthFromCookie,
+  SIDEBAR_WIDTH_DEFAULT,
   useSidebar,
   useSidebarOptional,
 }
