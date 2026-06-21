@@ -126,4 +126,28 @@
     @apply font-sans;
     font-size: 93.75%;
   }
+
+  html.pointer-cursors :is(
+    button:not(:disabled),
+    a[href],
+    label[for],
+    select,
+    summary,
+    [role="button"],
+    [role="menuitem"],
+    [role="option"],
+    [role="tab"],
+    [role="switch"],
+    [role="checkbox"],
+    [role="radio"],
+    [role="link"],
+    [data-slot="switch"],
+    input[type="checkbox"],
+    input[type="radio"],
+    input[type="submit"],
+    input[type="button"],
+    input[type="reset"]
+  ) {
+    cursor: pointer;
+  }
 }

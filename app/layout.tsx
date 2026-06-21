@@ -1,13 +1,13 @@
 import { Toaster } from "@/components/ui/sonner"
 import { Providers } from "@/components/providers";
 import type { Metadata } from "next";
-import { Inter, JetBrains_Mono, Geist } from "next/font/google";
+import { JetBrains_Mono, Geist } from "next/font/google";
 import { getBaseUrl } from "@/lib/base-url";
 import { APP_DESCRIPTION, APP_NAME } from "@/lib/brand";
 import { cn } from "@/lib/utils";
 import "./globals.css";
 
-const geist = Geist({subsets:['latin'],variable:'--font-sans'});
+const geist = Geist({ subsets: ["latin"], variable: "--font-sans" });
 
 const jetbrainsMono = JetBrains_Mono({
   subsets: ["latin"],
