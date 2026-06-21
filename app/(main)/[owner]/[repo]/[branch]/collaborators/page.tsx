@@ -23,7 +23,7 @@ export default function Page() {
   }
 
   return (
-    <div className="max-w-screen-sm mx-auto flex-1 flex flex-col h-full">
+    <div className="max-w-screen-sm mx-auto flex-1 flex flex-col h-full px-2 py-3">
       <DocumentTitle
         title={formatRepoBranchTitle("Collaborators", config.owner, config.repo, config.branch)}
       />

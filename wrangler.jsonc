@@ -13,10 +13,7 @@
   },
   "images": {
     "binding": "IMAGES"
-  },
-  "vars": {
-    "BASE_URL": "https://your-worker.pagescms.workers.dev"
-  },
+  },  
   "d1_databases": [
     {
       "binding": "DB",

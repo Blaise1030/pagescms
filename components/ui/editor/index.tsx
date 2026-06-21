@@ -922,7 +922,7 @@ export function Editor({
   );
 
   return (
-    <div {...props} className={cn("", className)}>
+    <div {...props} className={cn("w-full min-w-0", className)}>
       <BubbleMenu
         pluginKey="editor-bubble"
         ref={bubbleMenuRef}

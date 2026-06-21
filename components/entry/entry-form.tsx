@@ -1035,6 +1035,7 @@ const EntryForm = ({
   onDirtyChange,
   onChangeRegistered,
   onDraftChange,
+  onValuesChange,
 }: {
   fields: Field[];
   contentObject?: Record<string, unknown>;
@@ -1043,6 +1044,7 @@ const EntryForm = ({
   onDirtyChange?: (isDirty: boolean) => void;
   onChangeRegistered?: () => void;
   onDraftChange?: (content: Record<string, unknown>) => void;
+  onValuesChange?: (values: Record<string, unknown>) => void;
 }) => {
   const zodSchema = useMemo(() => {
     return generateZodSchema(fields);
@@ -1076,6 +1078,11 @@ const EntryForm = ({
       if (draftTimerRef.current) clearTimeout(draftTimerRef.current);
     };
   }, [allValues, defaultValues, onDraftChange]);
+
+  useEffect(() => {
+    if (!onValuesChange) return;
+    onValuesChange(sanitizeObject(allValues) as Record<string, unknown>);
+  }, [allValues, onValuesChange]);
 
   useEffect(() => {
     form.reset(defaultValues);

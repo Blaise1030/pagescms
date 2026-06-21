@@ -36,6 +36,7 @@ import {
 } from "@/lib/utils/file";
 import type { ApiSuccess, EntryData, EntryHistoryItem } from "@/types/api";
 import { EntryForm } from "./entry-form";
+import { PreviewPanel } from "./preview-panel";
 import { EntryHistoryBlock } from "./entry-history";
 import { SaveStatus, type SaveStatusValue } from "./save-status";
 import { DraftRestoreBanner } from "./draft-restore-banner";
@@ -76,8 +77,11 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton"
 import { toast } from "sonner";
-import { EllipsisVertical, Lock, LockOpen, Save } from "lucide-react";
+import { ArrowLeft, EllipsisVertical, Lock, LockOpen, Save } from "lucide-react";
 import useSWR, { useSWRConfig } from "swr";
+import { useSidebarOptional } from "@/components/ui/sidebar";
+import { ResizablePanelGroup, ResizablePanel, ResizableHandle, usePanelRef } from "@/components/ui/resizable";
+import { getPreviewUrl } from "@/lib/preview";
 
 function toFormContentShape(
   contentObject: Record<string, unknown> | undefined,
@@ -165,7 +169,15 @@ export function Entry({
   const { mutate } = useSWRConfig();
 
   const router = useRouter();
-  
+  const iframeRef = useRef<HTMLIFrameElement | null>(null);
+  const [previewFormValues, setPreviewFormValues] = useState<Record<string, unknown>>({});
+  const previewFormValuesRef = useRef<Record<string, unknown>>({});
+  const [showPreview, setShowPreview] = useState(true);
+  const [showEditor, setShowEditor] = useState(true);
+  const previewPanelRef = usePanelRef();
+  const editorPanelRef = usePanelRef();
+  const sidebar = useSidebarOptional();
+
   const { config } = useConfig();
   if (!config) throw new Error(`Configuration not found.`);
   
@@ -174,6 +186,16 @@ export function Entry({
     return getSchemaByName(config?.object, name)
   }, [config, name]);
   const schemaType = schema?.type;
+  const previewUrl = getPreviewUrl(
+    config?.object?.siteUrl as string | undefined,
+    schema?.previewPath as string | undefined,
+  );
+
+  useEffect(() => {
+    if (previewUrl) sidebar?.setOpen(false);
+  // ponytail: run once on mount only
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const operations = useMemo(
     () =>
       resolveContentOperations({
@@ -616,6 +638,15 @@ export function Entry({
     return () => window.removeEventListener("keydown", handleSaveShortcut);
   }, [isBusy]);
 
+  useEffect(() => {
+    if (!previewUrl || !iframeRef.current?.contentWindow) return;
+    const siteUrl = config?.object?.siteUrl as string;
+    iframeRef.current.contentWindow.postMessage(
+      { type: "cms:preview", data: previewFormValues },
+      siteUrl,
+    );
+  }, [previewFormValues, previewUrl, config?.object?.siteUrl]);
+
   const handleDelete = useCallback((path: string) => {
     // TODO: disable save button or freeze form while deleting?
     if (schemaType === "collection") {
@@ -828,6 +859,11 @@ export function Entry({
 
   const headerNode = useMemo(() => (
     <div className="flex min-w-0 items-center gap-2">
+      {previewUrl && (
+        <Button type="button" variant="outline" size="icon" onClick={() => router.back()} aria-label="Back">
+          <ArrowLeft className="size-4" />
+        </Button>
+      )}
       <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
         <Breadcrumb className="min-w-0 overflow-hidden">
           <BreadcrumbList className="min-w-0 flex-nowrap">
@@ -893,12 +929,12 @@ export function Entry({
         </div>
       )}
     </div>
-  ), [activeTab, breadcrumbNode, canDelete, canRename, filenameChanged, filenameFieldMode, filenameValue, handleDelete, handleRename, hasRegisteredChanges, headerActionsNode, headerMeta, isBusy, isFilenameUnlocked, isFormDirty, name, path, saveStatus, schemaType, sha, showFilenameField, showHeaderActions]);
+  ), [activeTab, breadcrumbNode, canDelete, canRename, filenameChanged, filenameFieldMode, filenameValue, handleDelete, handleRename, hasRegisteredChanges, headerActionsNode, headerMeta, isBusy, isFilenameUnlocked, isFormDirty, name, path, previewUrl, router, saveStatus, schemaType, sha, showEditor, showFilenameField, showHeaderActions, showPreview]);
 
   useRepoHeader({ header: headerNode });
 
   const loadingSkeleton = useMemo(() => (
-    <div className="w-full max-w-screen-md mx-auto grid items-start gap-6">
+    <div className="w-full grid items-start gap-6 px-2 py-3 pr-4">
       {path !== ".pages.yml"
         ? 
           <>
@@ -1005,56 +1041,53 @@ export function Entry({
     setActiveTab(tab);
   };
 
-  return (
-    isLoading
-      ? loadingSkeleton
-      : (
-        <div className="w-full max-w-screen-md mx-auto grid items-start gap-6">
-          {path && (
-            <div className="flex gap-1">
-              <Button
-                type="button"
-                variant={activeTab === "content" ? "secondary" : "ghost"}
-                className={activeTab === "content" ? "border" : ""}
-                size="sm"
-                onClick={() => handleTabChange("content")}
-              >
-                Content
-              </Button>
-              <Button
-                type="button"
-                variant={activeTab === "history" ? "secondary" : "ghost"}
-                className={activeTab === "history" ? "border" : ""}
-                size="sm"
-                onClick={() => handleTabChange("history")}
-              >
-                History
-              </Button>
-            </div>
+  const editorContent = (
+    <div className="w-full grid items-start gap-6 px-2 py-3 pr-4">
+      {path && (
+        <div className="flex gap-1">
+          <Button
+            type="button"
+            variant={activeTab === "content" ? "secondary" : "ghost"}
+            className={activeTab === "content" ? "border" : ""}
+            size="sm"
+            onClick={() => handleTabChange("content")}
+          >
+            Content
+          </Button>
+          <Button
+            type="button"
+            variant={activeTab === "history" ? "secondary" : "ghost"}
+            className={activeTab === "history" ? "border" : ""}
+            size="sm"
+            onClick={() => handleTabChange("history")}
+          >
+            History
+          </Button>
+        </div>
+      )}
+      {activeTab === "history" && path ? (
+        historyData && historyData.length > 0
+          ? <EntryHistoryBlock path={path} history={historyData} />
+          : <p className="text-sm text-muted-foreground">Loading history…</p>
+      ) : (
+        <>
+          {showDraftBanner && draftContent && (
+            <DraftRestoreBanner
+              onRestore={() => {
+                setEntry((prev) => prev ? { ...prev, contentObject: draftContent } : prev);
+                setShowDraftBanner(false);
+              }}
+              onDiscard={async () => {
+                if (path && config) {
+                  const key = idbCacheKey(config.owner, config.repo, config.branch, path);
+                  await deleteFileDraft(key);
+                }
+                setDraftContent(null);
+                setShowDraftBanner(false);
+              }}
+            />
           )}
-          {activeTab === "history" && path ? (
-            historyData && historyData.length > 0
-              ? <EntryHistoryBlock path={path} history={historyData} />
-              : <p className="text-sm text-muted-foreground">Loading history…</p>
-          ) : (
-            <>
-              {showDraftBanner && draftContent && (
-                <DraftRestoreBanner
-                  onRestore={() => {
-                    setEntry((prev) => prev ? { ...prev, contentObject: draftContent } : prev);
-                    setShowDraftBanner(false);
-                  }}
-                  onDiscard={async () => {
-                    if (path && config) {
-                      const key = idbCacheKey(config.owner, config.repo, config.branch, path);
-                      await deleteFileDraft(key);
-                    }
-                    setDraftContent(null);
-                    setShowDraftBanner(false);
-                  }}
-                />
-              )}
-              <EntryForm
+          <EntryForm
             fields={entryFields}
             contentObject={entryContentObject}
             onSubmit={onSubmit}
@@ -1113,10 +1146,65 @@ export function Entry({
                 await setFileDraft(key, content);
               }
             } : undefined}
+            onValuesChange={previewUrl ? (values) => {
+              previewFormValuesRef.current = values;
+              setPreviewFormValues(values);
+            } : undefined}
           />
-            </>
-          )}
-        </div>
-      )
+        </>
+      )}
+    </div>
+  );
+
+  return (
+    isLoading
+      ? loadingSkeleton
+      : previewUrl
+        ? (
+          <div className="absolute inset-0">
+            <ResizablePanelGroup orientation="horizontal" className="h-full">
+              <ResizablePanel
+                collapsible
+                collapsedSize={0}
+                minSize={10}
+                panelRef={editorPanelRef}
+                onResize={(size) => setShowEditor(size.asPercentage > 0)}
+                className="scrollbar overflow-y-auto"
+              >
+                {editorContent}
+              </ResizablePanel>
+              <ResizableHandle className="hidden lg:flex mx-1" />
+              <ResizablePanel
+                defaultSize={'70%'}
+                panelRef={previewPanelRef}
+                onResize={(size) => setShowPreview(size.asPercentage > 0)}
+                className="hidden lg:flex flex-1 flex-col"
+              >
+                <PreviewPanel
+                  previewUrl={previewUrl}
+                  formValues={previewFormValues}
+                  iframeRef={iframeRef}
+                  showEditor={showEditor}
+                  onToggleEditor={() => {
+                    if (showEditor) {
+                      editorPanelRef.current?.collapse();
+                    } else {
+                      editorPanelRef.current?.expand();
+                    }
+                  }}
+                  onLoad={() => {
+                    if (iframeRef.current?.contentWindow) {
+                      iframeRef.current.contentWindow.postMessage(
+                        { type: "cms:preview", data: previewFormValuesRef.current },
+                        config.object.siteUrl as string,
+                      );
+                    }
+                  }}
+                />
+              </ResizablePanel>
+            </ResizablePanelGroup>
+          </div>
+        )
+        : editorContent
   );
 };

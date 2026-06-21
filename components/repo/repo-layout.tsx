@@ -36,7 +36,7 @@ export function RepoLayout({ children }: { children: React.ReactNode }) {
         <RepoSidebar />
         <SidebarInset className="overflow-hidden">
           <RepoHeader />
-          <main className="relative px-2 min-w-0 min-h-0 flex-1 py-3 overflow-y-auto">
+          <main className="scrollbar relative min-w-0 min-h-0 flex-1 overflow-y-auto">
             {children}
           </main>
         </SidebarInset>

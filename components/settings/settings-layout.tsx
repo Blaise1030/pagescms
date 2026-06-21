@@ -17,7 +17,7 @@ export function SettingsLayout({
     <SidebarProvider className="overflow-hidden">
       <SettingsSidebar backHref={backHref} />
       <SidebarInset className="overflow-hidden">
-        <main className="relative min-w-0 min-h-0 flex-1 overflow-y-auto px-6 pt-10 pb-8 md:pt-12">
+        <main className="scrollbar relative min-w-0 min-h-0 flex-1 overflow-y-auto px-6 pt-10 pb-8 md:pt-12">
           {children}
         </main>
       </SidebarInset>
