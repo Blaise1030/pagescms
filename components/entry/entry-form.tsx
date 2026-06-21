@@ -493,7 +493,7 @@ const ListField = ({
                     <Button
                       type="button"
                       variant="ghost"
-                      size="xs"
+                      size="sm"
                       className="ml-auto text-muted-foreground hover:text-foreground"
                       onClick={() => toggleAll(isAllExpanded)}
                     >
@@ -1034,6 +1034,7 @@ const EntryForm = ({
   filePath,
   onDirtyChange,
   onChangeRegistered,
+  onDraftChange,
 }: {
   fields: Field[];
   contentObject?: Record<string, unknown>;
@@ -1041,6 +1042,7 @@ const EntryForm = ({
   filePath?: React.ReactNode;
   onDirtyChange?: (isDirty: boolean) => void;
   onChangeRegistered?: () => void;
+  onDraftChange?: (content: Record<string, unknown>) => void;
 }) => {
   const zodSchema = useMemo(() => {
     return generateZodSchema(fields);
@@ -1055,6 +1057,25 @@ const EntryForm = ({
     defaultValues,
     reValidateMode: "onSubmit",
   });
+
+  const allValues = useWatch({ control: form.control });
+  const draftTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (!onDraftChange) return;
+    if (draftTimerRef.current) clearTimeout(draftTimerRef.current);
+    draftTimerRef.current = setTimeout(() => {
+      const sanitized = sanitizeObject(allValues);
+      const sanitizedDefaults = sanitizeObject(defaultValues);
+      if (JSON.stringify(sanitized) === JSON.stringify(sanitizedDefaults)) {
+        return;
+      }
+      onDraftChange(sanitized as Record<string, unknown>);
+    }, 1000);
+    return () => {
+      if (draftTimerRef.current) clearTimeout(draftTimerRef.current);
+    };
+  }, [allValues, defaultValues, onDraftChange]);
 
   useEffect(() => {
     form.reset(defaultValues);
