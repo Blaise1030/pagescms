@@ -347,6 +347,7 @@ const EditComponent = forwardRef(
     const editorValueRef = useRef(canonicalValue);
     const syncedEditorValueRef = useRef(canonicalValue);
     const onChangeRef = useRef(onChange);
+    const previewDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const modeRef = useRef(mode);
     const skipNextSourceToEditorForCanonicalRef = useRef<string | null>(null);
     const transformSeqRef = useRef(0);
@@ -625,11 +626,16 @@ const EditComponent = forwardRef(
           shouldTouch: true,
           shouldValidate: false,
         });
-      } else {
-        onChangeRef.current(canonical);
       }
+      onChangeRef.current(canonical);
       editorDirtyRef.current = false;
     }, [editorToSource, form, name]);
+
+    useEffect(() => {
+      return () => {
+        if (previewDebounceRef.current) clearTimeout(previewDebounceRef.current);
+      };
+    }, []);
 
     useEffect(() => {
       if (!registerBeforeSubmitHook || !name) {
@@ -902,6 +908,11 @@ const EditComponent = forwardRef(
                 syncedEditorValueRef.current = nextValue;
                 setEditorValue(nextValue);
                 onChangeRegistered?.();
+                if (previewDebounceRef.current) clearTimeout(previewDebounceRef.current);
+                previewDebounceRef.current = setTimeout(() => {
+                  previewDebounceRef.current = null;
+                  void syncEditorToSource();
+                }, 300);
               }}
               format={format}
               className="cn-editor"

@@ -726,6 +726,12 @@ const ContentLeafSchema = z
         message: "'actions' must be an array of action definitions.",
       })
       .optional(),
+    previewPath: z
+      .string({
+        invalid_type_error: "'previewPath' must be a string.",
+      })
+      .optional()
+      .nullable(),
   })
   .strict();
 
@@ -790,6 +796,13 @@ const ConfigSchema = z
         message: "'actions' must be an array of action definitions.",
       })
       .optional(),
+    siteUrl: z
+      .string({
+        invalid_type_error: "'siteUrl' must be a string.",
+      })
+      .url({ message: "'siteUrl' must be a valid URL." })
+      .optional()
+      .nullable(),
     settings: z
       .union([
         z

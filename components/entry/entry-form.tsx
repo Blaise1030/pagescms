@@ -9,6 +9,8 @@ import {
   useCallback,
   useRef,
   useId,
+  createContext,
+  useContext,
 } from "react";
 import {
   useForm,
@@ -844,7 +846,7 @@ const ObjectField = forwardRef<HTMLDivElement, NestedFieldProps>(
         )}
         <div
           className={cn(
-            "p-4 grid gap-6",
+            "p-4 flex flex-col gap-6",
             isCollapsible && "border-t",
             isOpen ? "" : "hidden",
           )}
@@ -864,6 +866,8 @@ const ObjectField = forwardRef<HTMLDivElement, NestedFieldProps>(
 );
 
 ObjectField.displayName = "ObjectField";
+
+const PreviewUpdateContext = createContext<(() => void) | undefined>(undefined);
 
 const SingleField = ({
   field,
@@ -892,6 +896,7 @@ const SingleField = ({
     control,
     formState: { errors },
   } = useFormContext();
+  const triggerPreviewUpdate = useContext(PreviewUpdateContext);
   const isRichTextField = field.type === "rich-text";
   const showLabelSlot = isRichTextField && field.options?.switcher !== false;
   const shouldShowFieldMeta =
@@ -999,6 +1004,12 @@ const SingleField = ({
               {(() => {
                 const sharedProps = {
                   ...rhfManagedFieldProps,
+                  onChange: triggerPreviewUpdate
+                    ? (...args: any[]) => {
+                        (rhfManagedFieldProps.onChange as (...a: any[]) => void)(...args);
+                        triggerPreviewUpdate();
+                      }
+                    : rhfManagedFieldProps.onChange,
                   field,
                 };
                 if (field.type === "rich-text") {
@@ -1035,6 +1046,7 @@ const EntryForm = ({
   onDirtyChange,
   onChangeRegistered,
   onDraftChange,
+  onValuesChange,
 }: {
   fields: Field[];
   contentObject?: Record<string, unknown>;
@@ -1043,6 +1055,7 @@ const EntryForm = ({
   onDirtyChange?: (isDirty: boolean) => void;
   onChangeRegistered?: () => void;
   onDraftChange?: (content: Record<string, unknown>) => void;
+  onValuesChange?: (values: Record<string, unknown>) => void;
 }) => {
   const zodSchema = useMemo(() => {
     return generateZodSchema(fields);
@@ -1084,6 +1097,15 @@ const EntryForm = ({
   useEffect(() => {
     onDirtyChange?.(form.formState.isDirty);
   }, [form.formState.isDirty, onDirtyChange]);
+
+  const onValuesChangeRef = useRef(onValuesChange);
+  useEffect(() => {
+    onValuesChangeRef.current = onValuesChange;
+  }, [onValuesChange]);
+
+  const triggerPreviewUpdate = useCallback(() => {
+    onValuesChangeRef.current?.(sanitizeObject(form.getValues()) as Record<string, unknown>);
+  }, [form]);
 
   const beforeSubmitHooksRef = useRef<Map<string, BeforeSubmitHook>>(new Map());
 
@@ -1180,11 +1202,12 @@ const EntryForm = ({
   );
 
   return (
+    <PreviewUpdateContext.Provider value={onValuesChange ? triggerPreviewUpdate : undefined}>
     <Form {...form}>
       <form
         id="entry-form"
         onSubmit={handleFormSubmit}
-        className="w-full max-w-screen-md mx-auto grid items-start gap-6"
+        className="w-full max-w-screen-md mx-auto flex flex-col items-strech gap-6"
       >
         {filePath && (
           <div className="space-y-2 overflow-hidden">
@@ -1195,6 +1218,7 @@ const EntryForm = ({
         {renderFields(fields, undefined, registerBeforeSubmitHook, runBeforeValidationHooks)}
       </form>
     </Form>
+    </PreviewUpdateContext.Provider>
   );
 };
 
