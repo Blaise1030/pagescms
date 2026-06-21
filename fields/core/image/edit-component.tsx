@@ -57,7 +57,7 @@ const ImageTeaser = ({ file, config, onRemove }: {
       <ButtonGroup>
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button type="button" variant="ghost" size="icon-xs" asChild className="text-muted-foreground hover:text-foreground">
+            <Button type="button" variant="ghost" size="icon-sm" asChild className="text-muted-foreground hover:text-foreground">
               <a
                 href={`https://github.com/${config.owner}/${config.repo}/blob/${config.branch}/${file}`}
                 target="_blank"
@@ -76,7 +76,7 @@ const ImageTeaser = ({ file, config, onRemove }: {
               <Button
                 type="button"
                 variant="ghost"
-                size="icon-xs"
+                size="icon-sm"
                 className="text-muted-foreground hover:text-foreground"
                 onClick={onRemove}
                 aria-label="Remove image"
