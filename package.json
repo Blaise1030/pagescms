@@ -12,6 +12,7 @@
   },
   "version": "3.0.0-alpha.1",
   "private": true,
+  "packageManager": "pnpm@9.15.9",
   "scripts": {
     "setup:github-app": "node scripts/setup-github-app.mjs",
     "dev": "vinext dev",
