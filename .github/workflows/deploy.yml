@@ -23,7 +23,7 @@ jobs:
     environment: ${{ inputs.environment }}
     runs-on: ubuntu-latest
     outputs:
-      deployment-url: ${{ steps.deploy.outputs.deployment-url }}
+      deployment-url: ${{ steps.set-url.outputs.deployment-url || steps.deploy.outputs.deployment-url }}
     steps:
       - uses: actions/checkout@v4
 
@@ -52,8 +52,12 @@ jobs:
           command: d1 migrations apply pagescms --remote
 
       - name: Set BASE_URL for preview
+        id: set-url
         if: ${{ inputs.worker-name != '' }}
-        run: echo "BASE_URL=https://${{ inputs.worker-name }}.${{ secrets.CLOUDFLARE_WORKERS_DEV_SUBDOMAIN }}.workers.dev" >> $GITHUB_ENV
+        run: |
+          URL="https://${{ inputs.worker-name }}.${{ secrets.CLOUDFLARE_WORKERS_DEV_SUBDOMAIN }}.workers.dev"
+          echo "BASE_URL=$URL" >> $GITHUB_ENV
+          echo "deployment-url=$URL" >> $GITHUB_OUTPUT
 
       - name: Deploy to Cloudflare Workers
         id: deploy
