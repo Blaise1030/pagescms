@@ -77,9 +77,9 @@
     "clsx": "^2.1.1",
     "date-fns": "^3.6.0",
     "drizzle-orm": "^0.45.1",
+    "idb": "^8.0.3",
     "input-otp": "^1.4.2",
     "joplin-turndown-plugin-gfm": "^1.0.12",
-    "lodash.merge": "^4.6.2",
     "lodash.mergewith": "^4.6.2",
     "lucide-react": "^0.563.0",
     "marked": "^17.0.1",
@@ -102,7 +102,6 @@
   "devDependencies": {
     "@cloudflare/vite-plugin": "^1.42.1",
     "@tailwindcss/postcss": "^4.1.18",
-    "@types/lodash.merge": "^4.6.9",
     "@types/lodash.mergewith": "^4.6.9",
     "@types/node": "^25.2.2",
     "@types/react": "^19.2.13",
