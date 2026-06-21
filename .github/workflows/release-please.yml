@@ -30,7 +30,6 @@ jobs:
   deploy:
     needs: release-please
     if: ${{ needs.release-please.outputs.release_created == 'true' }}
-    environment: production
     permissions:
       contents: read
       deployments: write
