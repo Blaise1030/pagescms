@@ -928,7 +928,7 @@ const EditComponent = forwardRef(
           <Textarea
             value={sourceValue}
             onChange={(event) => handleSourceChange(event.target.value)}
-            className="font-mono min-h-40"
+            className="font-mono min-h-40 overflow-x-auto"
             spellCheck={false}
             readOnly={isReadonly}
           />
