@@ -190,7 +190,6 @@ const parseContents = (
         name: item.name,
         parentPath: item.parentPath,
         path: item.path,
-        content: item.content,
         fields: contentObject,
         type: "file",
         isNode: item.isNode,

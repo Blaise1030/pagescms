@@ -178,7 +178,7 @@ export default async function Page({
       <div className="max-w-screen-lg mx-auto p-4 md:p-6 space-y-6">
         <Link
           className={cn(
-            buttonVariants({ variant: "outline", size: "xs" }),
+            buttonVariants({ variant: "outline", size: "sm" }),
             "inline-flex",
           )}
           href="/"
