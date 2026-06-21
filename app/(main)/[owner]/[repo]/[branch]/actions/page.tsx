@@ -63,7 +63,7 @@ export default function Page() {
   };
 
   return (
-    <>
+    <div className="px-2 py-3">
       <DocumentTitle
         title={formatRepoBranchTitle("Actions", config.owner, config.repo, config.branch)}
       />
@@ -76,6 +76,6 @@ export default function Page() {
           contextLabels={contextLabels}
         />
       </div>
-    </>
+    </div>
   );
 }

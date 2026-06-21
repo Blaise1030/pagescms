@@ -1091,6 +1091,11 @@ const EntryForm = ({
   }, [allValues, defaultValues, onDraftChange]);
 
   useEffect(() => {
+    if (!onValuesChange) return;
+    onValuesChange(sanitizeObject(allValues) as Record<string, unknown>);
+  }, [allValues, onValuesChange]);
+
+  useEffect(() => {
     form.reset(defaultValues);
   }, [defaultValues, form]);
 

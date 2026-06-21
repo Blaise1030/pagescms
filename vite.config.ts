@@ -3,6 +3,15 @@ import vinext from "vinext";
 import { defineConfig } from "vite";
 
 export default defineConfig({
+  environments: {
+    rsc: {
+      build: {
+        rolldownOptions: {
+          external: ["react-resizable-panels"],
+        },
+      },
+    },
+  },
   plugins: [
     vinext(),
     cloudflare({

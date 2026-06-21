@@ -37,11 +37,11 @@ export default function Page() {
   }
 
   return (
-    <>
+    <div className="px-2 py-3">
       <DocumentTitle
         title={formatRepoBranchTitle("Cache", config.owner, config.repo, config.branch)}
       />
       <CachePage owner={config.owner} repo={config.repo} branch={config.branch} />
-    </>
+    </div>
   );
 }
