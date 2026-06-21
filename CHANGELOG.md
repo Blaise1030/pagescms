@@ -1,5 +1,20 @@
 # Changelog
 
+## [3.2.0-alpha.1](https://github.com/Blaise1030/pagescms/compare/pagescms-v3.1.0-alpha.1...pagescms-v3.2.0-alpha.1) (2026-06-21)
+
+
+### Features
+
+* move panel toggle into preview panel, add outline back button ([a0a3cad](https://github.com/Blaise1030/pagescms/commit/a0a3cad29fe331d9b0401b797caa5c953f678cdc))
+* move panel toggle into preview panel, add outline back button ([534b523](https://github.com/Blaise1030/pagescms/commit/534b523c2427f33fe9c9f2b628140946b1933a01))
+
+
+### Bug Fixes
+
+* add missing lib/preview and components/ui/resizable files ([3c72913](https://github.com/Blaise1030/pagescms/commit/3c72913663535b5d29d8c23e2c96e576623fb55f))
+* externalize react-resizable-panels from RSC server build ([5088b8a](https://github.com/Blaise1030/pagescms/commit/5088b8a5750638ab61f0c98d3b61ea8e6eb0e6e1))
+* removed ui component transitions ([861a2ed](https://github.com/Blaise1030/pagescms/commit/861a2ed7273815b6f1e01a179f36b8fc84d78e7a))
+
 ## [3.1.0-alpha.1](https://github.com/Blaise1030/pagescms/compare/pagescms-v3.0.0-alpha.1...pagescms-v3.1.0-alpha.1) (2026-06-21)
 
 
