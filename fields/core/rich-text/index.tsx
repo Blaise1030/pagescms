@@ -1,5 +1,5 @@
+import dynamic from "next/dynamic";
 import { Field } from "@/types/field";
-import { EditComponent } from "./edit-component";
 import { ViewComponent } from "./view-component";
 import { z } from "zod";
 
@@ -22,4 +22,14 @@ const schema = (field: Field, configObject?: Record<string, any>) => {
 
 const label = "Rich Text";
 
-export { label, schema, EditComponent, ViewComponent };
+export const EditComponent = dynamic(
+  () => import("./edit-component").then((m) => ({ default: m.EditComponent })),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="h-48 w-full animate-pulse rounded-md bg-muted" />
+    ),
+  }
+);
+
+export { label, schema, ViewComponent };

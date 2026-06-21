@@ -480,6 +480,7 @@ export function RepoActionButtons({
             <Button
               type="button"
               variant="outline"
+              size="sm"
               disabled={isBusy}
               onClick={() => handleActionClick(action)}
               className="gap-2"

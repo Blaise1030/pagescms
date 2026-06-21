@@ -26,19 +26,24 @@ const getRepoReadContext = async ({ owner, repo, branch }: RepoRef): Promise<Rep
   }
 
   const user = sessionResult.user as User;
-  const { token, source } = await getToken(user, owner, repo);
+
+  const [{ token, source }, githubId] = await Promise.all([
+    getToken(user, owner, repo),
+    getGithubId(user.id),
+  ]);
   if (!token) throw createHttpError("Token not found", 401);
 
-  const githubId = await getGithubId(user.id);
-  if (githubId && source === "user") {
-    const hasAccess = await checkRepoAccess(token, owner, repo, githubId);
-    if (!hasAccess) throw createHttpError(`No access to repository ${owner}/${repo}.`, 403);
-  }
+  const [hasAccess, config] = await Promise.all([
+    githubId && source === "user"
+      ? checkRepoAccess(token, owner, repo, githubId)
+      : Promise.resolve(true),
+    getConfig(owner, repo, branch, { getToken: async () => token }),
+  ]);
 
-  const config = await getConfig(owner, repo, branch, {
-    getToken: async () => token,
-  });
-  if (!config) throw createHttpError(`Configuration not found for ${owner}/${repo}/${branch}.`, 404);
+  if (!hasAccess)
+    throw createHttpError(`No access to repository ${owner}/${repo}.`, 403);
+  if (!config)
+    throw createHttpError(`Configuration not found for ${owner}/${repo}/${branch}.`, 404);
 
   return { user, token, config };
 };

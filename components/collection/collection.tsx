@@ -140,7 +140,7 @@ const CollectionHeaderActions = memo(function CollectionHeaderActions({
                   type="button"
                   variant="outline"
                   className="shrink-0"
-                  size="icon"
+                  size="icon-sm"
                 >
                   <FolderPlus />
                 </Button>
@@ -153,13 +153,13 @@ const CollectionHeaderActions = memo(function CollectionHeaderActions({
       {showAddEntry && (
         <>
           <Link
-            className={cn(buttonVariants(), "hidden sm:flex")}
+            className={cn(buttonVariants({ size: "sm" }), "hidden sm:flex")}
             href={addEntryHref}
           >
             Add an entry
           </Link>
           <Link
-            className={cn(buttonVariants({ size: "icon" }), "sm:hidden shrink-0")}
+            className={cn(buttonVariants({ size: "icon-sm" }), "sm:hidden shrink-0")}
             href={addEntryHref}
           >
             <Plus className="size-4" />
@@ -309,12 +309,8 @@ export function Collection({ name, path }: { name: string; path?: string }) {
     revalidateOnFocus: true,
     revalidateOnReconnect: true,
     dedupingInterval: 2000,
+    keepPreviousData: true,
   });
-
-  useEffect(() => {
-    setData([]);
-    setError(null);
-  }, [rootCollectionKey]);
 
   useEffect(() => {
     if (!swrCollectionData) return;
@@ -830,7 +826,7 @@ export function Collection({ name, path }: { name: string; path?: string }) {
 
     return (
       <Breadcrumb>
-        <BreadcrumbList className="font-semibold text-lg flex-nowrap">
+        <BreadcrumbList className="font-semibold flex-nowrap">
           {groupTrail.map((group) => (
             <Fragment key={`group-${group.name}`}>
               <BreadcrumbItem>

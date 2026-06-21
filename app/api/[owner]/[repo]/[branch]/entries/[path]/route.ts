@@ -1,5 +1,6 @@
 import { type NextRequest } from "next/server";
 import { createOctokitInstance } from "@/lib/utils/octokit";
+import { getCachedEntryContent, setCachedEntryContent } from "@/lib/github-cache-file";
 import { readFns } from "@/fields/registry";
 import { deepMap, getSchemaByName } from "@/lib/schema";
 import { parse } from "@/lib/serialization";
@@ -9,6 +10,7 @@ import { assertGithubIdentity } from "@/lib/authz-shared";
 import { getToken } from "@/lib/token";
 import { createHttpError, toErrorResponse } from "@/lib/api-error";
 import { requireApiUserSession } from "@/lib/session-server";
+import { decodeBase64Utf8 } from "@/lib/encoding";
 
 /**
  * Fetches and parses individual file contents from GitHub repositories
@@ -84,6 +86,29 @@ export async function GET(
       config = {};
     }
     
+    if (name) {
+      const cached = await getCachedEntryContent(
+        params.owner,
+        params.repo,
+        params.branch,
+        normalizedPath,
+      );
+      if (cached) {
+        const contentObject = parseContent(cached.content, schema, config);
+        return Response.json({
+          status: "success",
+          data: {
+            sha: cached.sha,
+            name: normalizedPath.includes("/")
+              ? normalizedPath.substring(normalizedPath.lastIndexOf("/") + 1)
+              : normalizedPath,
+            path: normalizedPath,
+            contentObject,
+          },
+        });
+      }
+    }
+
     const octokit = createOctokitInstance(token);
     let response;
     try {
@@ -91,7 +116,7 @@ export async function GET(
         owner: params.owner,
         repo: params.repo,
         path: normalizedPath,
-        ref: params.branch
+        ref: params.branch,
       });
     } catch (error: any) {
       if (error?.status === 404) {
@@ -99,14 +124,27 @@ export async function GET(
       }
       throw error;
     }
-    
+
     if (Array.isArray(response.data)) {
       throw createHttpError("Expected a file but found a directory", 400);
     } else if (response.data.type !== "file") {
       throw createHttpError("Invalid response type", 500);
     }
 
-    const content = Buffer.from(response.data.content, "base64").toString();
+    const content = decodeBase64Utf8(response.data.content);
+
+    if (name) {
+      await setCachedEntryContent(
+        params.owner,
+        params.repo,
+        params.branch,
+        normalizedPath,
+        content,
+        response.data.sha,
+        response.data.size ?? 0,
+      ).catch(() => {});
+    }
+
     const contentObject = name
       ? parseContent(content, schema, config)
       : { body: content };
@@ -117,8 +155,8 @@ export async function GET(
         sha: response.data.sha,
         name: response.data.name,
         path: response.data.path,
-        contentObject
-      }
+        contentObject,
+      },
     });
   } catch (error: any) {
     console.error(error);

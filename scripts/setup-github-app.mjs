@@ -31,7 +31,6 @@ async function main() {
   const ownerType = args.ownerType === "org" ? "org" : "personal";
   const orgSlug = ownerType === "org" ? (args.org || "").trim() : "";
   const state = randomBytes(16).toString("hex");
-  const webhookSecret = randomBytes(32).toString("base64url");
 
   if (ownerType === "org" && !orgSlug) {
     throw new Error("Missing --org <slug> when --owner-type org.");
@@ -39,8 +38,19 @@ async function main() {
 
   const localCallbackUrl = `http://${host}:${port}/api/github-app/callback`;
   const userAuthorizationCallbackUrl = `${baseUrl}/api/auth/callback/github`;
-  const webhookUrl = `${baseUrl}/api/webhook/github`;
+  const webhookUrl = trimSlash(args.webhookUrl || `${baseUrl}/api/webhook/github`);
   const setupUrl = `${baseUrl}/`;
+  const webhookEnabled = !isPrivateBaseUrl(webhookUrl);
+  const defaultEvents = [
+    "installation_target",
+    "repository",
+    "push",
+    "delete",
+    "check_run",
+    "check_suite",
+    "status",
+    "workflow_run",
+  ];
 
   const manifest = {
     name: appName,
@@ -55,28 +65,31 @@ async function main() {
       checks: "read",
       statuses: "read",
       contents: "write",
-      email_addresses: "read",
       metadata: "read",
     },
-    default_events: [
-      "installation_target",
-      "repository",
-      "push",
-      "delete",
-      "check_run",
-      "check_suite",
-      "status",
-      "workflow_run",
-    ],
     request_oauth_on_install: false,
     setup_on_update: true,
     setup_url: setupUrl,
-    hook_attributes: {
+  };
+
+  if (webhookEnabled) {
+    manifest.hook_attributes = {
       url: webhookUrl,
       active: true,
-      secret: webhookSecret,
-    },
-  };
+    };
+    manifest.default_events = defaultEvents;
+  } else if (args.webhookUrl) {
+    throw new Error(
+      `Webhook URL must be publicly reachable. Got: ${webhookUrl}`,
+    );
+  } else {
+    console.warn(
+      `\nNo webhook or events in manifest because ${webhookUrl} is not publicly reachable.`,
+    );
+    console.warn(
+      "Pass --webhook-url with a tunnel URL, or configure webhook + events later in GitHub App settings.",
+    );
+  }
 
   const appCreationUrl =
     ownerType === "org"
@@ -107,7 +120,7 @@ async function main() {
     GITHUB_APP_CLIENT_ID: converted.client_id,
     GITHUB_APP_CLIENT_SECRET: converted.client_secret,
     GITHUB_APP_PRIVATE_KEY: wrapQuoted(escapeNewlines(converted.pem || "")),
-    GITHUB_APP_WEBHOOK_SECRET: webhookSecret,
+    GITHUB_APP_WEBHOOK_SECRET: converted.webhook_secret,
   };
 
   if (envPath) {
@@ -116,6 +129,7 @@ async function main() {
 
   console.log("\nGitHub App created.");
   console.log(`- App: ${converted.name} (${converted.slug})`);
+  console.log(`- Settings: https://github.com/settings/apps/${converted.slug}`);
   if (envPath) {
     console.log(`- Env file updated: ${envPath}`);
   } else {
@@ -127,11 +141,24 @@ async function main() {
   }
   console.log(`- User authorization callback: ${userAuthorizationCallbackUrl}`);
   console.log(`- Setup URL: ${setupUrl}`);
-  console.log(`- Webhook URL: ${webhookUrl}`);
+  if (webhookEnabled) {
+    console.log(`- Webhook URL: ${webhookUrl}`);
+  } else {
+    console.log("- Webhook: disabled during setup (local/private URL)");
+    console.log(`  Configure later in GitHub App settings: ${webhookUrl}`);
+    console.log(`  Also subscribe to events: ${defaultEvents.join(", ")}`);
+  }
   console.log("\nNext:");
-  console.log("1) Install the app on your target account/repositories.");
+  console.log("1) In GitHub App settings → Permissions & events:");
+  console.log("   Account permissions → Email addresses → Read-only (required for sign-in).");
+  console.log("2) Install the app on your target account/repositories.");
   console.log("   Disable 'User-to-server token expiration' if GitHub shows that option.");
-  console.log(`2) Start ${defaultAppName}.`);
+  if (!webhookEnabled) {
+    console.log(
+      "   After exposing the app publicly, set the webhook URL in GitHub App settings.",
+    );
+  }
+  console.log(`3) Start ${defaultAppName}.`);
 }
 
 main().catch((error) => {
@@ -212,7 +239,16 @@ async function runLocalFlow({
   });
 
   const launchUrl = `http://${host}:${port}${startPath}`;
-  console.log(`\nOpen this URL if browser does not open automatically:\n${launchUrl}`);
+  console.log("\n=== GitHub App setup ===");
+  console.log("Keep this terminal open until you see 'GitHub App created.'");
+  console.log("\nSteps:");
+  console.log("  1. Open the local setup page (browser may open automatically)");
+  console.log("  2. GitHub opens with a pre-filled app form");
+  console.log("  3. Click 'Create GitHub App' on GitHub (you can change the name)");
+  console.log("  4. GitHub redirects back to localhost and this script finishes");
+  console.log("\nIf GitHub shows 'Invalid GitHub App configuration', fix the error there.");
+  console.log("No app is created until step 3 succeeds.\n");
+  console.log(`Setup page:\n${launchUrl}`);
   if (autoOpen) tryOpenBrowser(launchUrl);
 
   const timeoutMs = 10 * 60 * 1000;
@@ -239,18 +275,25 @@ function renderAutoPostPage({ appCreationUrl, manifest }) {
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>GitHub App Setup</title>
+    <style>
+      body { font-family: system-ui, sans-serif; max-width: 40rem; margin: 3rem auto; line-height: 1.5; }
+      button { font: inherit; padding: 0.6rem 1rem; cursor: pointer; }
+      ol { padding-left: 1.2rem; }
+    </style>
   </head>
   <body>
+    <h1>Create GitHub App</h1>
+    <p>This page sends a pre-filled manifest to GitHub.</p>
+    <ol>
+      <li>Click <strong>Continue to GitHub</strong> below.</li>
+      <li>On GitHub, review the form and click <strong>Create GitHub App</strong>.</li>
+      <li>After GitHub redirects back here, return to your terminal.</li>
+    </ol>
+    <p>If GitHub shows a manifest error, no app is created. Fix it in the repo setup script and try again.</p>
     <form id="manifest-form" method="post" action="${escapedAction}">
       <input type="hidden" name="manifest" value="${escapedManifest}" />
-      <noscript>
-        <p>JavaScript is disabled. Click continue.</p>
-        <button type="submit">Continue</button>
-      </noscript>
+      <button type="submit">Continue to GitHub</button>
     </form>
-    <script>
-      document.getElementById("manifest-form").submit();
-    </script>
   </body>
 </html>`;
 }
@@ -324,6 +367,7 @@ function parseArgs(argv) {
     port: "",
     envPath: "",
     baseUrl: "",
+    webhookUrl: "",
     appName: "",
     ownerType: "",
     org: "",
@@ -336,6 +380,7 @@ function parseArgs(argv) {
     else if (arg === "--port") result.port = argv[++i] || "";
     else if (arg === "--env") result.envPath = argv[++i] || "";
     else if (arg === "--base-url") result.baseUrl = argv[++i] || "";
+    else if (arg === "--webhook-url") result.webhookUrl = argv[++i] || "";
     else if (arg === "--app-name") result.appName = argv[++i] || "";
     else if (arg === "--owner-type") result.ownerType = argv[++i] || "";
     else if (arg === "--org") result.org = argv[++i] || "";
@@ -355,6 +400,7 @@ function printHelp() {
       "",
       "Options:",
       "  --base-url <url>         App base URL (default: http://localhost:3000)",
+      "  --webhook-url <url>      Public webhook URL (default: <base-url>/api/webhook/github)",
       `  --app-name <name>        GitHub App display name (default: ${defaultAppName})`,
       "  --owner-type <type>      personal or org (default: personal)",
       "  --org <slug>             Organization slug when owner-type=org",
@@ -372,6 +418,46 @@ function printHelp() {
 
 function trimSlash(value) {
   return value.replace(/\/+$/g, "");
+}
+
+function isPrivateBaseUrl(value) {
+  let hostname;
+  try {
+    hostname = new URL(value).hostname.toLowerCase();
+  } catch {
+    return true;
+  }
+
+  if (
+    hostname === "localhost" ||
+    hostname.endsWith(".localhost") ||
+    hostname.endsWith(".local")
+  ) {
+    return true;
+  }
+
+  if (hostname === "::1" || hostname === "[::1]") {
+    return true;
+  }
+
+  const ipv4Match = hostname.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+  if (!ipv4Match) {
+    return false;
+  }
+
+  const octets = ipv4Match.slice(1).map(Number);
+  if (octets.some((octet) => octet > 255)) {
+    return true;
+  }
+
+  const [a, b] = octets;
+  return (
+    a === 10 ||
+    a === 127 ||
+    (a === 172 && b >= 16 && b <= 31) ||
+    (a === 192 && b === 168) ||
+    a === 169 && b === 254
+  );
 }
 
 function escapeNewlines(value) {

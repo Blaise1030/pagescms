@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { MoreHorizontal, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -19,15 +20,38 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { requireApiSuccess } from "@/lib/api-client";
 
 export function AdminUserRowActions({
   name,
-  action,
+  userId,
 }: {
   name: string;
-  action: () => Promise<unknown>;
+  userId: string;
 }) {
+  const router = useRouter();
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [isPending, setIsPending] = useState(false);
+
+  const handleLogout = async () => {
+    setIsPending(true);
+    try {
+      const response = await fetch(`/api/admin/sessions/${userId}`, {
+        method: "DELETE",
+      });
+      const data = await requireApiSuccess<{ redirectTo?: string | null }>(
+        response,
+        "Failed to log out user",
+      );
+      setConfirmOpen(false);
+      if (data.redirectTo) {
+        router.push(data.redirectTo);
+      }
+      router.refresh();
+    } finally {
+      setIsPending(false);
+    }
+  };
 
   return (
     <>
@@ -60,16 +84,16 @@ export function AdminUserRowActions({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <form
-              className="contents"
-              action={async () => {
-                await action();
-                setConfirmOpen(false);
+            <AlertDialogCancel disabled={isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={isPending}
+              onClick={(event) => {
+                event.preventDefault();
+                void handleLogout();
               }}
             >
-              <AlertDialogAction>Log out</AlertDialogAction>
-            </form>
+              Log out
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

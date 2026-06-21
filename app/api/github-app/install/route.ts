@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 
 export const GET = async () => {
-  const appName = process.env.GITHUB_APP_NAME?.trim();
+  const appName = process.env.A_GITHUB_APP_NAME?.trim();
 
   if (!appName) {
     return NextResponse.json(
-      { status: "error", message: "Missing GITHUB_APP_NAME." },
+      { status: "error", message: "Missing A_GITHUB_APP_NAME." },
       { status: 500 },
     );
   }

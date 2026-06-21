@@ -1,3 +1,5 @@
+import { timingSafeEqual } from "@/lib/encoding";
+
 /**
  * Utility functions to encrypt and decrypt text using AES-GCM. Used to secure
  * info in the DB (e.g. GitHub tokens).
@@ -50,4 +52,27 @@ const decrypt = async (ciphertext: string, iv: string) => {
   return new TextDecoder().decode(decryptedData);
 };
 
-export { encrypt, decrypt };
+const verifyGitHubWebhookSignature = async (
+  secret: string,
+  body: string,
+  signature: string,
+) => {
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const digest = await crypto.subtle.sign(
+    "HMAC",
+    key,
+    new TextEncoder().encode(body),
+  );
+  const hex = Array.from(new Uint8Array(digest))
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("");
+  return timingSafeEqual(signature, `sha256=${hex}`);
+};
+
+export { encrypt, decrypt, verifyGitHubWebhookSignature };

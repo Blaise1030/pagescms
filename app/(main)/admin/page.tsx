@@ -15,11 +15,10 @@ import {
   userTable,
 } from "@/db/schema";
 import { DocumentTitle } from "@/components/document-title";
-import { AdminConfirmActionButton } from "@/components/admin-confirm-action-button";
+import { AdminLogoutAllButton, AdminResetCacheButton } from "@/components/admin-confirm-action-button";
 import { AdminTimeAgo } from "@/components/admin-time-ago";
 import { AdminUserSearch } from "@/components/admin-user-search";
 import { AdminUserRowActions } from "@/components/admin-user-row-actions";
-import { logoutAllUsers, logoutUserSessions, resetGlobalCache } from "@/lib/actions/admin";
 import { buttonVariants } from "@/components/ui/button";
 import {
   Avatar,
@@ -105,6 +104,7 @@ export default async function Page({
   searchParams?: Promise<{ q?: string; page?: string }>;
 }) {
   await requireAdminSession();
+  // eslint-disable-next-line react-hooks/purity
   const nowMs = Date.now();
   const resolvedSearchParams = await searchParams;
   const query = resolvedSearchParams?.q?.trim() ?? "";
@@ -179,7 +179,7 @@ export default async function Page({
       <div className="max-w-screen-lg mx-auto p-4 md:p-6 space-y-6">
         <Link
           className={cn(
-            buttonVariants({ variant: "outline", size: "xs" }),
+            buttonVariants({ variant: "outline", size: "sm" }),
             "inline-flex",
           )}
           href="/"
@@ -232,15 +232,7 @@ export default async function Page({
             <CardContent>
               <div className="mb-4 flex items-center justify-between gap-2">
                 <AdminUserSearch initialQuery={query} />
-                <AdminConfirmActionButton
-                  action={logoutAllUsers}
-                  label="Log out all users"
-                  title="Log out all users?"
-                  description="This will revoke every active session and redirect everyone to sign in again."
-                  confirmLabel="Log out all"
-                  variant="outline"
-                  size="sm"
-                />
+                <AdminLogoutAllButton />
               </div>
               <Table>
                 <TableHeader>
@@ -306,7 +298,7 @@ export default async function Page({
                         <TableCell className="w-12 min-w-12 text-right">
                           <AdminUserRowActions
                             name={user.name || user.email}
-                            action={logoutUserSessions.bind(null, user.id)}
+                            userId={user.id}
                           />
                         </TableCell>
                       </TableRow>
@@ -389,16 +381,7 @@ export default async function Page({
               </div>
             </CardContent>
             <CardFooter className="flex justify-end">
-              <AdminConfirmActionButton
-                action={resetGlobalCache}
-                label="Reset cache"
-                title="Reset cache?"
-                description="This will clear cached files, cached config, cache metadata, and permission cache."
-                confirmLabel="Reset"
-                variant="outline"
-                size="sm"
-                icon={<RefreshCcw className="size-4" />}
-              />
+              <AdminResetCacheButton icon={<RefreshCcw className="size-4" />} />
             </CardFooter>
           </Card>
         </div>

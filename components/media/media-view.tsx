@@ -73,7 +73,7 @@ function MediaHeaderActions({
         <TooltipTrigger asChild>
           <div>
             <FolderCreate path={path} name={mediaName} type="media" onCreate={onFolderCreate}>
-              <Button type="button" variant="outline" size="icon">
+              <Button type="button" variant="outline" size="icon-sm">
                 <FolderPlus />
               </Button>
             </FolderCreate>
@@ -82,7 +82,7 @@ function MediaHeaderActions({
         <TooltipContent>Create folder</TooltipContent>
       </Tooltip>
       <MediaUpload.Trigger>
-        <Button type="button" className="gap-2">
+        <Button type="button" size="sm" className="gap-2">
           <Upload />
           Upload
         </Button>
@@ -164,7 +164,7 @@ const MediaFileTile = memo(function MediaFileTile({
           onRename={onRename}
           portalProps={{ container: portalContainer }}
         >
-          <Button variant="ghost" size="icon-xs" className="shrink-0 self-start">
+          <Button variant="ghost" size="icon-sm" className="shrink-0 self-start">
             <EllipsisVertical />
           </Button>
         </FileOptions>
@@ -470,7 +470,7 @@ const MediaView = ({
               <Skeleton className="w-24 h-5 rounded mb-2"/>
               <Skeleton className="w-16 h-2 rounded"/>
             </div>
-            <Button variant="ghost" size="icon-xs" className="shrink-0 ml-auto" disabled>
+            <Button variant="ghost" size="icon-sm" className="shrink-0 ml-auto" disabled>
               <EllipsisVertical />
             </Button>
           </div>
@@ -480,7 +480,7 @@ const MediaView = ({
   ), []);
 
   const breadcrumbNode = useMemo(() => {
-    const breadcrumbTextClass = usePageHeader ? "font-semibold text-lg flex-nowrap" : "text-sm flex-nowrap";
+    const breadcrumbTextClass = usePageHeader ? "font-semibold flex-nowrap" : "text-sm flex-nowrap";
     const isDialog = !usePageHeader;
     const mediaTitle = mediaConfig.label || mediaConfig.name || "Media";
     const rootPath = normalizePath(mediaConfig.input);

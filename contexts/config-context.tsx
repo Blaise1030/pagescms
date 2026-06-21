@@ -1,34 +1,47 @@
 "use client";
 
-import { createContext, useContext, useState } from "react";
+import { createContext, useContext, useState, use } from "react";
 import { Config } from "@/types/config";
 
-interface ConfigContextType {
+export type ConfigState = {
   config: Config | null;
-  setConfig: (config: Config | null) => void;
-}
-
-const ConfigContext = createContext<ConfigContextType | null>(null);
-
-export const useConfig = () => {
-  const context = useContext(ConfigContext);
-  if (!context) {
-    throw new Error("useConfig must be used within a ConfigProvider");
-  }
-  return context;
+  error: "branch_not_found" | "forbidden" | null;
 };
 
+type ConfigContextType = {
+  configPromise: Promise<ConfigState>;
+  configOverride: Config | null | undefined;
+  setConfig: (config: Config | null) => void;
+};
+
+const ConfigContext = createContext<ConfigContextType>({
+  configPromise: Promise.resolve({ config: null, error: null }),
+  configOverride: undefined,
+  setConfig: () => {},
+});
+
+export const useConfig = () => {
+  const { configPromise, configOverride, setConfig } = useContext(ConfigContext);
+  const config =
+    configOverride !== undefined
+      ? configOverride
+      : use(configPromise).config;
+  return { config, setConfig };
+};
+
+export const useConfigPromise = () => useContext(ConfigContext).configPromise;
+
 export const ConfigProvider = ({
-  value,
+  configPromise,
   children,
 }: {
-  value: Config | null;
+  configPromise: Promise<ConfigState>;
   children: React.ReactNode;
 }) => {
-  const [config, setConfig] = useState<Config | null>(value);
+  const [configOverride, setConfig] = useState<Config | null | undefined>(undefined);
 
   return (
-    <ConfigContext.Provider value={{ config, setConfig }}>
+    <ConfigContext.Provider value={{ configPromise, configOverride, setConfig }}>
       {children}
     </ConfigContext.Provider>
   );

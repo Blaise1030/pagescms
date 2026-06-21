@@ -8,13 +8,24 @@ import { useConfig } from "@/contexts/config-context";
 import { parseAndValidateConfig } from "@/lib/config";
 import { resolveContentOperations } from "@/lib/operations";
 import { requireApiSuccess } from "@/lib/api-client";
+import {
+  idbCacheKey,
+  getFileCache,
+  setFileCache,
+  getFileDraft,
+  setFileDraft,
+  deleteFileDraft,
+} from "@/lib/idb";
 import { getSchemaActions } from "@/lib/actions";
 import {
   generateFilename,
   getPrimaryField,
   getSchemaByName,
+  initializeState,
   safeAccess,
+  sanitizeObject,
 } from "@/lib/schema";
+import type { Field } from "@/types/field";
 import {
   getFileExtension,
   getFileName,
@@ -25,7 +36,9 @@ import {
 } from "@/lib/utils/file";
 import type { ApiSuccess, EntryData, EntryHistoryItem } from "@/types/api";
 import { EntryForm } from "./entry-form";
-import { EntryHistoryDropdown } from "./entry-history";
+import { EntryHistoryBlock } from "./entry-history";
+import { SaveStatus, type SaveStatusValue } from "./save-status";
+import { DraftRestoreBanner } from "./draft-restore-banner";
 import { EmptyCreate } from "@/components/empty-create";
 import { FileOptions } from "@/components/file/file-options";
 import { RepoActionButtons } from "@/components/repo/repo-action-buttons";
@@ -63,8 +76,36 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton"
 import { toast } from "sonner";
-import { EllipsisVertical, History, Lock, LockOpen, Save } from "lucide-react";
+import { EllipsisVertical, Lock, LockOpen, Save } from "lucide-react";
 import useSWR, { useSWRConfig } from "swr";
+
+function toFormContentShape(
+  contentObject: Record<string, unknown> | undefined,
+  listSchema: boolean,
+): Record<string, unknown> {
+  if (!contentObject) return {};
+  return listSchema ? { listWrapper: contentObject } : contentObject;
+}
+
+function normalizedFormSnapshot(
+  fields: Field[],
+  contentShape: Record<string, unknown>,
+): Record<string, unknown> {
+  return sanitizeObject(initializeState(fields, sanitizeObject(contentShape)));
+}
+
+function draftMatchesContent(
+  fields: Field[],
+  draft: Record<string, unknown>,
+  contentObject: Record<string, unknown> | undefined,
+  listSchema: boolean,
+): boolean {
+  const baseline = toFormContentShape(contentObject, listSchema);
+  return (
+    JSON.stringify(sanitizeObject(draft)) ===
+    JSON.stringify(normalizedFormSnapshot(fields, baseline))
+  );
+}
 
 type LintView = {
   state: {
@@ -97,6 +138,9 @@ export function Entry({
   const [path, setPath] = useState<string | undefined>(initialPath);
   const [entry, setEntry] = useState<EntryData | null>();
   const [sha, setSha] = useState<string | undefined>();
+  useEffect(() => {
+    shaRef.current = sha;
+  }, [sha]);
   const [displayTitle, setDisplayTitle] = useState<string>(() => {
     if (title) return title;
     if (initialPath && initialPath !== ".pages.yml") {
@@ -106,8 +150,16 @@ export function Entry({
   });
   const [isLoading, setIsLoading] = useState(path ? true : false);
   const [isSaving, setIsSaving] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<SaveStatusValue>("idle");
+  const shaRef = useRef<string | undefined>(undefined);
+  const inFlightRef = useRef(false);
+  const pendingFlushRef = useRef<Record<string, unknown> | null>(null);
+  const [draftContent, setDraftContent] = useState<Record<string, unknown> | null>(null);
+  const [showDraftBanner, setShowDraftBanner] = useState(false);
   const [isFormDirty, setIsFormDirty] = useState(false);
   const [hasRegisteredChanges, setHasRegisteredChanges] = useState(false);
+  const [activeTab, setActiveTab] = useState<"content" | "history">("content");
+  const historyEverActivated = useRef(false);
   const [error, setError] = useState<string | undefined | null>(null);
   const changeVersionRef = useRef(0);
   const { mutate } = useSWRConfig();
@@ -262,7 +314,62 @@ export function Entry({
     } else if (!title && path && path !== ".pages.yml") {
       setDisplayTitle(`Editing "${getFileName(normalizePath(path))}"`);
     }
-  }, [initialPath, path, schema, swrEntryData, title]);
+    if (path && config && swrEntryData.contentObject) {
+      const key = idbCacheKey(config.owner, config.repo, config.branch, path);
+      void setFileCache(key, swrEntryData.contentObject as Record<string, unknown>);
+
+      void (async () => {
+        const draft = await getFileDraft(key);
+        if (
+          draft &&
+          draftMatchesContent(
+            entryFields,
+            draft,
+            swrEntryData.contentObject,
+            schema?.list === true,
+          )
+        ) {
+          await deleteFileDraft(key);
+          setShowDraftBanner(false);
+          setDraftContent(null);
+        }
+      })();
+    }
+  }, [config, entryFields, initialPath, path, schema, swrEntryData, title]);
+
+  useEffect(() => {
+    if (!path || !config) return;
+    const key = idbCacheKey(config.owner, config.repo, config.branch, path);
+
+    (async () => {
+      const draft = await getFileDraft(key);
+      if (draft) {
+        const cached = await getFileCache(key);
+        const listSchema = schema?.list === true;
+        if (
+          cached &&
+          draftMatchesContent(entryFields, draft, cached, listSchema)
+        ) {
+          await deleteFileDraft(key);
+        } else {
+          setDraftContent(draft);
+          setShowDraftBanner(true);
+        }
+        setIsLoading(false);
+        return;
+      }
+      const cached = await getFileCache(key);
+      if (cached && !entry) {
+        setEntry({
+          path,
+          sha: "",
+          contentObject: cached,
+        });
+        setIsLoading(false);
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (!swrEntryError) return;
@@ -278,8 +385,9 @@ export function Entry({
   ), [config.branch, config.owner, config.repo, name, path]);
 
   const historyKey = useMemo(
-    () => historyApiUrl ? [historyApiUrl, sha ?? ""] as const : null,
-    [historyApiUrl, sha],
+    () => (historyApiUrl && historyEverActivated.current) ? [historyApiUrl, sha ?? ""] as const : null,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [historyApiUrl, sha, activeTab],
   );
 
   const fetchEntryHistory = useCallback(async ([apiUrl]: readonly [string, string]): Promise<EntryHistoryItem[]> => {
@@ -309,118 +417,182 @@ export function Entry({
     && filenameValue.trim().length > 0
     && filenameValue.trim() !== currentFilename;
 
-  const onSubmit = async (contentObject: Record<string, unknown>) => {
-    setIsSaving(true);
-    const submitStartChangeVersion = changeVersionRef.current;
+  const executeSave = useCallback(
+    async (contentObject: Record<string, unknown>, savePath: string) => {
+      inFlightRef.current = true;
+      setSaveStatus("saving");
 
-    const savePromise = new Promise<ApiSuccess<EntryData>>(async (resolve, reject) => {
       try {
-        let savePath = path;
-        const trimmedFilename = filenameValue.trim();
-        const normalizedFilename = normalizePath(trimmedFilename).split("/").pop() || "";
+        const response = await fetch(
+          `/api/${config.owner}/${config.repo}/${encodeURIComponent(config.branch)}/files/${encodeURIComponent(savePath)}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              type: savePath === ".pages.yml" ? "settings" : "content",
+              name,
+              content: schema?.list === true ? contentObject.listWrapper : contentObject,
+              sha: shaRef.current,
+            }),
+          }
+        );
+        const data = await requireApiSuccess<any>(response, "Failed to save file");
 
-        if (showFilenameField && !normalizedFilename) {
-          throw new Error("Filename is required.");
+        if (data.data.sha !== shaRef.current) {
+          // eslint-disable-next-line react-hooks/immutability
+          shaRef.current = data.data.sha;
+          setSha(data.data.sha);
         }
 
-        if (!savePath) {
+        if (path) {
+          const key = idbCacheKey(config.owner, config.repo, config.branch, path);
+          void deleteFileDraft(key);
+          void setFileCache(key, contentObject);
+        }
+
+        setHasRegisteredChanges(false);
+        setSaveStatus("saved");
+
+        if (schemaType === "collection") {
+          const collectionKeyPrefix = `/api/${config.owner}/${config.repo}/${encodeURIComponent(config.branch)}/collections/${encodeURIComponent(name)}?`;
+          void mutate((key) => typeof key === "string" && key.startsWith(collectionKeyPrefix));
+        }
+
+        if (onSave) onSave(data.data);
+
+        const pending = pendingFlushRef.current;
+        pendingFlushRef.current = null;
+        if (pending) {
+          // eslint-disable-next-line react-hooks/immutability
+          await executeSave(pending, savePath);
+        } else {
+          inFlightRef.current = false;
+        }
+      } catch (error: unknown) {
+        inFlightRef.current = false;
+        setSaveStatus("error");
+        const message =
+          error instanceof Error ? error.message : "Failed to save file.";
+        toast.error(message, {
+          duration: Infinity,
+          action: {
+            label: "Retry",
+            onClick: () => void executeSave(contentObject, savePath),
+          },
+        });
+      }
+    },
+    [config, name, path, schema, schemaType, onSave, mutate, setHasRegisteredChanges]
+  );
+
+  const onSubmit = async (contentObject: Record<string, unknown>) => {
+    if (!path) {
+      setIsSaving(true);
+      const submitStartChangeVersion = changeVersionRef.current;
+
+      const savePromise = new Promise<ApiSuccess<EntryData>>(async (resolve, reject) => {
+        try {
           if (!schema) throw new Error("Cannot create entry without schema.");
           if (!canCreate) throw new Error("Creating entries in this content item isn't allowed.");
           const basePath = parent ?? schema.path;
           if (basePath == null) throw new Error("Cannot create entry without a target path.");
+          const trimmedFilename = filenameValue.trim();
+          const normalizedFilename = normalizePath(trimmedFilename).split("/").pop() || "";
+          if (showFilenameField && !normalizedFilename) throw new Error("Filename is required.");
           const generatedFilename = showFilenameField
             ? normalizedFilename
             : generateFilename(schema.filename, schema, contentObject);
-          savePath = joinPathSegments([basePath, generatedFilename]);
-        } else if (filenameChanged && !canRename && schemaType === "collection") {
-          throw new Error("Renaming this entry isn't allowed.");
-        } else if (
-          showFilenameField
-          && filenameFieldMode === "enabled"
-          && isFilenameUnlocked
-          && filenameChanged
-          && schemaType === "collection"
-        ) {
-          const newPath = joinPathSegments([getParentPath(savePath), normalizedFilename]);
-          const renameResponse = await fetch(
-            `/api/${config.owner}/${config.repo}/${encodeURIComponent(config.branch)}/files/${encodeURIComponent(savePath)}/rename`,
+          const savePath = joinPathSegments([basePath, generatedFilename]);
+
+          const response = await fetch(
+            `/api/${config.owner}/${config.repo}/${encodeURIComponent(config.branch)}/files/${encodeURIComponent(savePath)}`,
             {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
                 type: "content",
                 name,
-                newPath,
+                content: schema?.list === true ? contentObject.listWrapper : contentObject,
+                sha: undefined,
               }),
-            },
+            }
           );
-          await requireApiSuccess<any>(renameResponse, "Failed to rename file");
-          savePath = newPath;
-          setPath(newPath);
-          setIsFilenameUnlocked(false);
-          router.replace(`/${config.owner}/${config.repo}/${encodeURIComponent(config.branch)}/collection/${encodeURIComponent(name)}/edit/${encodeURIComponent(newPath)}`);
-
-          const collectionKeyPrefix = `/api/${config.owner}/${config.repo}/${encodeURIComponent(config.branch)}/collections/${encodeURIComponent(name)}?`;
-          void mutate((key) => typeof key === "string" && key.startsWith(collectionKeyPrefix));
+          const data = await requireApiSuccess<any>(response, "Failed to save file");
+          if (data.data.sha) setSha(data.data.sha);
+          if (schemaType === "collection") {
+            router.push(
+              `/${config.owner}/${config.repo}/${encodeURIComponent(config.branch)}/collection/${encodeURIComponent(name)}/edit/${encodeURIComponent(data.data.path)}`
+            );
+            const collectionKeyPrefix = `/api/${config.owner}/${config.repo}/${encodeURIComponent(config.branch)}/collections/${encodeURIComponent(name)}?`;
+            void mutate((key) => typeof key === "string" && key.startsWith(collectionKeyPrefix));
+          }
+          resolve(data);
+        } catch (error) {
+          reject(error);
         }
+      });
 
-        const response = await fetch(`/api/${config.owner}/${config.repo}/${encodeURIComponent(config.branch)}/files/${encodeURIComponent(savePath)}`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            type: path === ".pages.yml" ? "settings" : "content",
-            name,
-            content: schema?.list === true
-              ? contentObject.listWrapper
-              : contentObject,
-            sha: sha
-          }),
-        });
-        const data = await requireApiSuccess<any>(
-          response,
-          "Failed to save file",
-        );
-        
-        if (data.data.sha !== sha) setSha(data.data.sha);
+      toast.promise(savePromise, {
+        loading: "Creating file…",
+        success: (response: ApiSuccess<EntryData>) => {
+          if (onSave) onSave(response.data);
+          return response.message;
+        },
+        error: (error: unknown) =>
+          error instanceof Error ? error.message : "Failed to create file.",
+      });
+
+      try {
+        await savePromise;
         if (submitStartChangeVersion === changeVersionRef.current) {
           setHasRegisteredChanges(false);
         }
-
-        if (!path && schemaType === "collection") router.push(`/${config.owner}/${config.repo}/${encodeURIComponent(config.branch)}/collection/${encodeURIComponent(name)}/edit/${encodeURIComponent(data.data.path)}`);
-        if (schemaType === "collection") {
-          const collectionKeyPrefix = `/api/${config.owner}/${config.repo}/${encodeURIComponent(config.branch)}/collections/${encodeURIComponent(name)}?`;
-          void mutate((key) => typeof key === "string" && key.startsWith(collectionKeyPrefix));
-        }
-
-        resolve(data);
       } catch (error) {
-        reject(error);
-      }
-    });
-
-    toast.promise(savePromise, {
-      loading: "Saving your file",
-      success: (response: ApiSuccess<EntryData>) => {
-        if (onSave) onSave(response.data);
-        return response.message;
-      },
-      error: (error: unknown) => error instanceof Error ? error.message : "Failed to save file.",
-    });
-
-    try {
-      await savePromise;
-      if (submitStartChangeVersion === changeVersionRef.current) {
-        setHasRegisteredChanges(false);
-      }
-    } catch (error: unknown) {
-      if (error instanceof Error) {
-        console.error(error.message);
-      } else {
         console.error(error);
+      } finally {
+        setIsSaving(false);
       }
-    } finally {
-      setIsSaving(false);
+      return;
     }
+
+    let savePath = path;
+    const trimmedFilename = filenameValue.trim();
+    const normalizedFilename = normalizePath(trimmedFilename).split("/").pop() || "";
+
+    if (
+      showFilenameField &&
+      filenameFieldMode === "enabled" &&
+      isFilenameUnlocked &&
+      filenameChanged &&
+      schemaType === "collection"
+    ) {
+      if (!canRename) throw new Error("Renaming this entry isn't allowed.");
+      const newPath = joinPathSegments([getParentPath(savePath), normalizedFilename]);
+      const renameResponse = await fetch(
+        `/api/${config.owner}/${config.repo}/${encodeURIComponent(config.branch)}/files/${encodeURIComponent(savePath)}/rename`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ type: "content", name, newPath }),
+        }
+      );
+      await requireApiSuccess<any>(renameResponse, "Failed to rename file");
+      savePath = newPath;
+      setPath(newPath);
+      setIsFilenameUnlocked(false);
+      router.replace(
+        `/${config.owner}/${config.repo}/${encodeURIComponent(config.branch)}/collection/${encodeURIComponent(name)}/edit/${encodeURIComponent(newPath)}`
+      );
+      const collectionKeyPrefix = `/api/${config.owner}/${config.repo}/${encodeURIComponent(config.branch)}/collections/${encodeURIComponent(name)}?`;
+      void mutate((key) => typeof key === "string" && key.startsWith(collectionKeyPrefix));
+    }
+
+    if (inFlightRef.current) {
+      pendingFlushRef.current = contentObject;
+      return;
+    }
+
+    void executeSave(contentObject, savePath);
   };
 
   const isBusy = isLoading || isSaving;
@@ -658,7 +830,7 @@ export function Entry({
     <div className="flex min-w-0 items-center gap-2">
       <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
         <Breadcrumb className="min-w-0 overflow-hidden">
-          <BreadcrumbList className="min-w-0 flex-nowrap font-semibold text-lg">
+          <BreadcrumbList className="min-w-0 flex-nowrap">
             {breadcrumbNode}
           </BreadcrumbList>
         </Breadcrumb>
@@ -667,43 +839,34 @@ export function Entry({
       {showHeaderActions && (
         <div className="flex shrink-0 items-center gap-x-2">
           {headerActionsNode}
-          {path && (
-            historyData && historyData.length > 0 && !isLoading
-              ? (
-                <EntryHistoryDropdown
-                  history={historyData}
-                  path={path}
-                  triggerVariant="outline"
-                  triggerSize="icon"
-                />
-              )
-              : <Button variant="outline" size="icon" className="shrink-0" disabled><History /></Button>
-          )}
-          <Button
-            type="submit"
-            form="entry-form"
-            disabled={
-              isBusy ||
-              (showFilenameField && filenameValue.trim().length === 0) ||
-              (
-                Boolean(path) &&
-                !(
-                  isFormDirty
-                  || hasRegisteredChanges
-                  || (
-                    showFilenameField
-                    && filenameFieldMode === "enabled"
-                    && isFilenameUnlocked
-                    && filenameChanged
+          {path && activeTab === "content" && <SaveStatus status={saveStatus} />}
+          {activeTab === "content" && (
+            <Button
+              type="submit"
+              form="entry-form"
+              disabled={
+                isBusy ||
+                (showFilenameField && filenameValue.trim().length === 0) ||
+                (
+                  Boolean(path) &&
+                  !(
+                    isFormDirty
+                    || hasRegisteredChanges
+                    || (
+                      showFilenameField
+                      && filenameFieldMode === "enabled"
+                      && isFilenameUnlocked
+                      && filenameChanged
+                    )
                   )
                 )
-              )
-            }
-            aria-label="Save"
-          >
-            <Save className="size-4 sm:hidden" />
-            <span className="hidden sm:inline">Save</span>
-          </Button>
+              }
+              aria-label="Save"
+            >
+              <Save className="size-4 sm:hidden" />
+              <span className="hidden sm:inline">Save</span>
+            </Button>
+          )}
           {path && (
             <ButtonGroup>
               {sha
@@ -730,7 +893,7 @@ export function Entry({
         </div>
       )}
     </div>
-  ), [breadcrumbNode, canDelete, canRename, filenameChanged, filenameFieldMode, filenameValue, handleDelete, handleRename, hasRegisteredChanges, headerActionsNode, headerMeta, historyData, isBusy, isFilenameUnlocked, isFormDirty, isLoading, name, path, schemaType, sha, showFilenameField, showHeaderActions]);
+  ), [activeTab, breadcrumbNode, canDelete, canRename, filenameChanged, filenameFieldMode, filenameValue, handleDelete, handleRename, hasRegisteredChanges, headerActionsNode, headerMeta, isBusy, isFilenameUnlocked, isFormDirty, name, path, saveStatus, schemaType, sha, showFilenameField, showHeaderActions]);
 
   useRepoHeader({ header: headerNode });
 
@@ -749,7 +912,7 @@ export function Entry({
             </div>
             <div className="space-y-2">
               <Skeleton className="w-24 h-5 rounded" />
-              <div className="grid grid-flow-col auto-cols-max gap-4">
+              <div className="grid grid-flow-col auto-cols-max gap-6">
                 <Skeleton className="w-28 h-28 rounded-md" />
                 <Skeleton className="w-28 h-28 rounded-md" />
                 <Skeleton className="w-28 h-28 rounded-md" />
@@ -837,53 +1000,123 @@ export function Entry({
     );
   }
   
+  const handleTabChange = (tab: "content" | "history") => {
+    if (tab === "history") historyEverActivated.current = true;
+    setActiveTab(tab);
+  };
+
   return (
     isLoading
       ? loadingSkeleton
-      : <EntryForm
-        fields={entryFields}
-        contentObject={entryContentObject}
-        onSubmit={onSubmit}
-        filePath={
-          showFilenameField
-            ? <InputGroup data-disabled={path ? !isFilenameUnlocked : false}>
-                <InputGroupInput
-                  value={filenameValue}
-                  onChange={(event) => setFilenameValue(event.target.value)}
-                  placeholder="Filename"
-                  disabled={path ? !isFilenameUnlocked : false}
-                  aria-label="Filename"
+      : (
+        <div className="w-full max-w-screen-md mx-auto grid items-start gap-6">
+          {path && (
+            <div className="flex gap-1">
+              <Button
+                type="button"
+                variant={activeTab === "content" ? "secondary" : "ghost"}
+                className={activeTab === "content" ? "border" : ""}
+                size="sm"
+                onClick={() => handleTabChange("content")}
+              >
+                Content
+              </Button>
+              <Button
+                type="button"
+                variant={activeTab === "history" ? "secondary" : "ghost"}
+                className={activeTab === "history" ? "border" : ""}
+                size="sm"
+                onClick={() => handleTabChange("history")}
+              >
+                History
+              </Button>
+            </div>
+          )}
+          {activeTab === "history" && path ? (
+            historyData && historyData.length > 0
+              ? <EntryHistoryBlock path={path} history={historyData} />
+              : <p className="text-sm text-muted-foreground">Loading history…</p>
+          ) : (
+            <>
+              {showDraftBanner && draftContent && (
+                <DraftRestoreBanner
+                  onRestore={() => {
+                    setEntry((prev) => prev ? { ...prev, contentObject: draftContent } : prev);
+                    setShowDraftBanner(false);
+                  }}
+                  onDiscard={async () => {
+                    if (path && config) {
+                      const key = idbCacheKey(config.owner, config.repo, config.branch, path);
+                      await deleteFileDraft(key);
+                    }
+                    setDraftContent(null);
+                    setShowDraftBanner(false);
+                  }}
                 />
-                {path && filenameFieldMode === "enabled" && canRename && (
-                  <InputGroupAddon align="inline-end">
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <InputGroupButton
-                          type="button"
-                          variant="ghost"
-                          size="icon-xs"
-                          onClick={() => setIsFilenameUnlocked((prev) => !prev)}
-                          aria-label={isFilenameUnlocked ? "Lock filename" : "Unlock filename"}
-                        >
-                          {isFilenameUnlocked
-                            ? <LockOpen className="size-3.5" />
-                            : <Lock className="size-3.5" />}
-                        </InputGroupButton>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        {isFilenameUnlocked ? "Lock filename" : "Unlock to edit"}
-                      </TooltipContent>
-                    </Tooltip>
-                  </InputGroupAddon>
-                )}
-              </InputGroup>
-            : undefined
-        }
-        onDirtyChange={setIsFormDirty}
-        onChangeRegistered={() => {
-          changeVersionRef.current += 1;
-          setHasRegisteredChanges(true);
-        }}
-      />
+              )}
+              <EntryForm
+            fields={entryFields}
+            contentObject={entryContentObject}
+            onSubmit={onSubmit}
+            filePath={
+              showFilenameField
+                ? <InputGroup data-disabled={path ? !isFilenameUnlocked : false}>
+                    <InputGroupInput
+                      value={filenameValue}
+                      onChange={(event) => setFilenameValue(event.target.value)}
+                      placeholder="Filename"
+                      disabled={path ? !isFilenameUnlocked : false}
+                      aria-label="Filename"
+                    />
+                    {path && filenameFieldMode === "enabled" && canRename && (
+                      <InputGroupAddon align="inline-end">
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <InputGroupButton
+                              type="button"
+                              variant="ghost"
+                              size="icon-sm"
+                              onClick={() => setIsFilenameUnlocked((prev) => !prev)}
+                              aria-label={isFilenameUnlocked ? "Lock filename" : "Unlock filename"}
+                            >
+                              {isFilenameUnlocked
+                                ? <LockOpen className="size-3.5" />
+                                : <Lock className="size-3.5" />}
+                            </InputGroupButton>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            {isFilenameUnlocked ? "Lock filename" : "Unlock to edit"}
+                          </TooltipContent>
+                        </Tooltip>
+                      </InputGroupAddon>
+                    )}
+                  </InputGroup>
+                : undefined
+            }
+            onDirtyChange={setIsFormDirty}
+            onChangeRegistered={() => {
+              changeVersionRef.current += 1;
+              setHasRegisteredChanges(true);
+            }}
+            onDraftChange={path ? async (content) => {
+              const key = idbCacheKey(config.owner, config.repo, config.branch, path);
+              if (
+                draftMatchesContent(
+                  entryFields,
+                  content,
+                  entry?.contentObject,
+                  schema?.list === true,
+                )
+              ) {
+                await deleteFileDraft(key);
+              } else {
+                await setFileDraft(key, content);
+              }
+            } : undefined}
+          />
+            </>
+          )}
+        </div>
+      )
   );
 };

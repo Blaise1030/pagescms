@@ -2,12 +2,6 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useActionState } from "react";
-import {
-  handleAddCollaborator,
-  handleRemoveCollaborator,
-  handleResendCollaboratorInvite,
-} from "@/lib/actions/collaborator";
 import { useRepoHeader } from "@/components/repo/repo-header-context";
 import { Button } from "@/components/ui/button";
 import { SubmitButton } from "@/components/submit-button";
@@ -35,7 +29,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   DropdownMenu,
@@ -71,8 +64,6 @@ type AddCollaboratorState = {
 function InviteCollaboratorsDialog({
   owner,
   repo,
-  state,
-  action,
   open,
   onOpenChange,
   value,
@@ -81,11 +72,12 @@ function InviteCollaboratorsDialog({
   triggerLabel,
   triggerVariant = "outline",
   triggerSize = "default",
+  onInvite,
+  isSubmitting,
+  error,
 }: {
   owner: string;
   repo: string;
-  state: AddCollaboratorState;
-  action: (payload: FormData) => void;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   value: string;
@@ -94,6 +86,9 @@ function InviteCollaboratorsDialog({
   triggerLabel?: string;
   triggerVariant?: "default" | "outline";
   triggerSize?: "default" | "sm";
+  onInvite: (emails: string[]) => Promise<void>;
+  isSubmitting: boolean;
+  error?: string;
 }) {
   const parsedInviteEmails = useMemo(() => {
     return Array.from(
@@ -108,11 +103,15 @@ function InviteCollaboratorsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogTrigger asChild>
-        <Button variant={triggerVariant} size={triggerSize} disabled={disabled}>
-          {triggerLabel || "Invite"}
-        </Button>
-      </DialogTrigger>
+      <Button
+        type="button"
+        variant={triggerVariant}
+        size={triggerSize}
+        disabled={disabled}
+        onClick={() => onOpenChange(true)}
+      >
+        {triggerLabel || "Invite"}
+      </Button>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Invite collaborators</DialogTitle>
@@ -121,7 +120,13 @@ function InviteCollaboratorsDialog({
             lines.
           </DialogDescription>
         </DialogHeader>
-        <form action={action} className="space-y-4">
+        <form
+          className="space-y-4"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void onInvite(parsedInviteEmails);
+          }}
+        >
           <input type="hidden" name="owner" value={owner} />
           <input type="hidden" name="repo" value={repo} />
           <Textarea
@@ -132,15 +137,15 @@ function InviteCollaboratorsDialog({
             required
             rows={6}
           />
-          {state?.error ? (
+          {error ? (
             <p className="text-sm font-medium text-destructive">
-              {state.error}
+              {error}
             </p>
           ) : null}
           <DialogFooter>
             <SubmitButton
               type="submit"
-              disabled={parsedInviteEmails.length === 0}
+              disabled={parsedInviteEmails.length === 0 || isSubmitting}
             >
               Send invite{parsedInviteEmails.length > 1 ? "s" : ""}
             </SubmitButton>
@@ -161,12 +166,10 @@ export function Collaborators({
   branch?: string;
 }) {
   const [collaborators, setCollaborators] = useState<Collaborator[]>([]);
-  const [addCollaboratorState, addCollaboratorAction] = useActionState<
-    AddCollaboratorState,
-    FormData
-  >(handleAddCollaborator, {});
   const [emails, setEmails] = useState("");
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
+  const [inviteError, setInviteError] = useState<string | undefined>();
+  const [isInviting, setIsInviting] = useState(false);
   const [removing, setRemoving] = useState<number[]>([]);
   const [resending, setResending] = useState<number[]>([]);
   const [pendingRemoveId, setPendingRemoveId] = useState<number | null>(null);
@@ -222,75 +225,85 @@ export function Collaborators({
     return () => controller.abort();
   }, [owner, repo, branch]);
 
-  useEffect(() => {
-    if (addCollaboratorState?.message) {
-      if (
-        Array.isArray(addCollaboratorState.data) &&
-        addCollaboratorState.data.length > 0
-      ) {
-        addNewCollaborator(addCollaboratorState.data);
+  const handleInviteCollaborators = useCallback(async (inviteEmails: string[]) => {
+    setIsInviting(true);
+    setInviteError(undefined);
+
+    try {
+      const response = await fetch(`/api/collaborators/${owner}/${repo}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ emails: inviteEmails }),
+      });
+      const data = await requireApiSuccess<AddCollaboratorState>(
+        response,
+        "Failed to invite collaborators",
+      );
+
+      if (Array.isArray(data.data) && data.data.length > 0) {
+        addNewCollaborator(data.data);
       }
 
-      toast.success(addCollaboratorState.message, { duration: 10000 });
-      if (
-        Array.isArray(addCollaboratorState.errors) &&
-        addCollaboratorState.errors.length > 0
-      ) {
-        toast.error(addCollaboratorState.errors.join("\n"), {
-          duration: 10000,
-        });
+      toast.success(data.message || "Collaborators invited.", { duration: 10000 });
+      if (Array.isArray(data.errors) && data.errors.length > 0) {
+        toast.error(data.errors.join("\n"), { duration: 10000 });
       }
       setEmails("");
       setInviteDialogOpen(false);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Failed to invite collaborators";
+      setInviteError(message);
+      toast.error(message);
+    } finally {
+      setIsInviting(false);
     }
-  }, [addCollaboratorState, addNewCollaborator]);
+  }, [addNewCollaborator, owner, repo]);
 
-  const handleConfirmRemove = async (collaboratorId: number) => {
+  const handleConfirmRemove = useCallback(async (collaboratorId: number) => {
     setRemoving((prev) => [...prev, collaboratorId]);
 
     try {
-      const removed = await handleRemoveCollaborator(
-        collaboratorId,
-        owner,
-        repo,
+      const response = await fetch(
+        `/api/collaborators/${owner}/${repo}/${collaboratorId}`,
+        { method: "DELETE" },
       );
-
-      if (removed.error) {
-        toast.error(removed.error);
-      } else {
-        setCollaborators((prev) =>
-          prev.filter((collaborator) => collaborator.id !== collaboratorId),
-        );
-        toast.success(removed.message);
-      }
-    } catch (err: any) {
-      toast.error(err.message);
+      const removed = await requireApiSuccess<{ message?: string }>(
+        response,
+        "Failed to remove collaborator",
+      );
+      setCollaborators((prev) =>
+        prev.filter((collaborator) => collaborator.id !== collaboratorId),
+      );
+      toast.success(removed.message || "Collaborator removed.");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Failed to remove collaborator";
+      toast.error(message);
     } finally {
       setPendingRemoveId(null);
       setRemoving((prev) => prev.filter((id) => id !== collaboratorId));
     }
-  };
+  }, [owner, repo]);
 
-  const handleResendInvite = async (collaboratorId: number) => {
+  const handleResendInvite = useCallback(async (collaboratorId: number) => {
     setResending((prev) => [...prev, collaboratorId]);
 
     try {
-      const resent = await handleResendCollaboratorInvite(
-        collaboratorId,
-        owner,
-        repo,
+      const response = await fetch(
+        `/api/collaborators/${owner}/${repo}/${collaboratorId}/resend`,
+        { method: "POST" },
       );
-      if (resent.error) {
-        toast.error(resent.error);
-      } else {
-        toast.success(resent.message);
-      }
-    } catch (err: any) {
-      toast.error(err.message);
+      const resent = await requireApiSuccess<{ message?: string }>(
+        response,
+        "Failed to resend invitation",
+      );
+      toast.success(resent.message || "Invitation resent.");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Failed to resend invitation";
+      toast.error(message);
     } finally {
       setResending((prev) => prev.filter((id) => id !== collaboratorId));
     }
-  };
+  }, [owner, repo]);
 
   const headerNode = useMemo(() => {
     const showInviteAction = !isLoading && !error && collaborators.length > 0;
@@ -298,7 +311,7 @@ export function Collaborators({
     return (
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <h1 className="font-semibold text-lg">Collaborators</h1>
+          <h1 className="font-semibold">Collaborators</h1>
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
@@ -324,13 +337,14 @@ export function Collaborators({
           <InviteCollaboratorsDialog
             owner={owner}
             repo={repo}
-            state={addCollaboratorState}
-            action={addCollaboratorAction}
             open={inviteDialogOpen}
             onOpenChange={setInviteDialogOpen}
             value={emails}
             onValueChange={setEmails}
             disabled={isLoading}
+            onInvite={handleInviteCollaborators}
+            isSubmitting={isInviting}
+            error={inviteError}
             triggerVariant="default"
             triggerSize="default"
           />
@@ -338,12 +352,13 @@ export function Collaborators({
       </div>
     );
   }, [
-    addCollaboratorAction,
-    addCollaboratorState,
     collaborators.length,
     emails,
     error,
+    handleInviteCollaborators,
     inviteDialogOpen,
+    inviteError,
+    isInviting,
     isLoading,
     owner,
     repo,
@@ -363,7 +378,7 @@ export function Collaborators({
             <Skeleton className="h-5 w-24 text-left rounded" />
             <Button
               variant="outline"
-              size="icon-xs"
+              size="icon-sm"
               className="ml-auto"
               disabled
             >
@@ -426,7 +441,7 @@ export function Collaborators({
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button
-                      size="icon-xs"
+                      size="icon-sm"
                       variant="outline"
                       className="ml-auto"
                       disabled={
@@ -511,13 +526,14 @@ export function Collaborators({
               <InviteCollaboratorsDialog
                 owner={owner}
                 repo={repo}
-                state={addCollaboratorState}
-                action={addCollaboratorAction}
                 open={inviteDialogOpen}
                 onOpenChange={setInviteDialogOpen}
                 value={emails}
                 onValueChange={setEmails}
                 disabled={isLoading}
+                onInvite={handleInviteCollaborators}
+                isSubmitting={isInviting}
+                error={inviteError}
                 triggerLabel="Invite a collaborator"
                 triggerVariant="default"
                 triggerSize="default"

@@ -114,7 +114,7 @@ export function RepoSelect({
         <li key={index} className="flex gap-x-2 items-center border border-b-0 last:border-b first:rounded-t-md last:rounded-b-md px-3 py-2 text-sm">
           <Skeleton className="h-5 w-24 text-left rounded" />
           <Skeleton className="h-5 w-24 text-left rounded" />
-          <Button variant="outline" size="xs" className="ml-auto" disabled>
+          <Button variant="outline" size="sm" className="ml-auto" disabled>
             Open
           </Button>
         </li>
@@ -201,7 +201,7 @@ export function RepoSelect({
                     <div className="text-muted-foreground truncate">{formatDistanceToNow(new Date(result.updatedAt))} ago</div>
                   }
                   <Link
-                    className={cn("ml-auto", buttonVariants({ variant: "outline", size: "xs"}))}
+                    className={cn("ml-auto", buttonVariants({ variant: "outline", size: "sm"}))}
                     href={`/${result.owner}/${result.repo}/${result.defaultBranch ? encodeURIComponent(result.defaultBranch) : ""}`}
                   >
                     Open

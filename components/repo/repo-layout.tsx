@@ -1,15 +1,11 @@
 "use client";
 
-import { useEffect } from "react";
 import { RepoSidebar } from "@/components/repo/repo-sidebar";
 import {
   SidebarInset,
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
-import { useConfig } from "@/contexts/config-context";
-import { useRepo } from "@/contexts/repo-context";
-import { trackVisit } from "@/lib/tracker";
 import {
   RepoHeaderProvider,
   useRepoHeaderState,
@@ -26,30 +22,23 @@ function RepoHeader() {
   if (!hasHeaderContent) return null;
 
   return (
-    <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center border-b bg-background px-4 md:px-6">
-      <SidebarTrigger className="mr-2 md:hidden" />
+    <header className="sticky top-0 z-10 flex py-1 shrink-0 items-center gap-2 border-b rounded-t-xl bg-background dark:bg-accent/30 px-2">
+      <SidebarTrigger />
       <div className="min-w-0 flex-1">{header}</div>
     </header>
   );
 }
 
 export function RepoLayout({ children }: { children: React.ReactNode }) {
-  const { config } = useConfig();
-  const { owner, repo } = useRepo();
-
-  useEffect(() => {
-    if (config?.owner && config?.repo && config?.branch) {
-      trackVisit(owner, repo, config.branch);
-    }
-  }, [config, owner, repo]);
-
   return (
-    <SidebarProvider>
+    <SidebarProvider className="overflow-hidden">
       <RepoHeaderProvider>
         <RepoSidebar />
-        <SidebarInset className="min-h-screen">
+        <SidebarInset className="overflow-hidden">
           <RepoHeader />
-          <main className="min-w-0 flex-1 p-4 md:p-6">{children}</main>
+          <main className="relative px-2 min-w-0 min-h-0 flex-1 py-3 overflow-y-auto">
+            {children}
+          </main>
         </SidebarInset>
       </RepoHeaderProvider>
     </SidebarProvider>

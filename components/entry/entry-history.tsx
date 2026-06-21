@@ -64,7 +64,7 @@ export function EntryHistoryBlock({
           target="_blank"
           rel="noopener noreferrer"
           key={item.sha}
-          className="flex items-center rounded-lg px-3 py-2 transition-all hover:bg-accent ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          className="flex items-center rounded-lg px-3 py-2 transition-colors hover:bg-accent ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
         >
           <HistoryItemContent item={item} />
         </a>
@@ -74,7 +74,7 @@ export function EntryHistoryBlock({
           href={`https://github.com/${config?.owner}/${config?.repo}/commits/${encodeURIComponent(config!.branch)}/${path}`}
           target="_blank"
           rel="noopener noreferrer"
-          className="flex items-center rounded-lg px-3 py-2 transition-all hover:bg-accent ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          className="flex items-center rounded-lg px-3 py-2 transition-colors hover:bg-accent ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
         >
           <span className="mr-4">See all changes</span>
           {/* <ArrowUpRight className="h-3 w-3 ml-auto min-ml-4 opacity-50" /> */}
