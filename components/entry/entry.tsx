@@ -439,6 +439,7 @@ export function Entry({
         const data = await requireApiSuccess<any>(response, "Failed to save file");
 
         if (data.data.sha !== shaRef.current) {
+          // eslint-disable-next-line react-hooks/immutability
           shaRef.current = data.data.sha;
           setSha(data.data.sha);
         }
@@ -462,6 +463,7 @@ export function Entry({
         const pending = pendingFlushRef.current;
         pendingFlushRef.current = null;
         if (pending) {
+          // eslint-disable-next-line react-hooks/immutability
           await executeSave(pending, savePath);
         } else {
           inFlightRef.current = false;
