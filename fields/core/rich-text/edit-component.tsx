@@ -17,7 +17,7 @@ import { cn } from "@/lib/utils";
 import {
   MediaDialog,
   type MediaDialogHandle,
-} from "@/components/media/media-dialog";
+} from "@/app/(main)/[owner]/[repo]/[branch]/_components/media/media-dialog";
 import { useConfig } from "@/contexts/config-context";
 import { useRepo } from "@/contexts/repo-context";
 import { getSchemaByName } from "@/lib/schema";

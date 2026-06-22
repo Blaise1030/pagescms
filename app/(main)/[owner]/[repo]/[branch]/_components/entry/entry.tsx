@@ -34,8 +34,8 @@ import { EntryHistoryBlock } from "./entry-history";
 import { SaveStatus, type SaveStatusValue } from "./save-status";
 import { DraftRestoreBanner } from "./draft-restore-banner";
 import { EmptyCreate } from "@/components/empty-create";
-import { FileOptions } from "@/components/file/file-options";
-import { RepoActionButtons } from "@/components/repo/repo-action-buttons";
+import { FileOptions } from "@/app/(main)/[owner]/[repo]/[branch]/_components/file/file-options";
+import { RepoActionButtons } from "@/app/(main)/[owner]/[repo]/[branch]/_components/repo/repo-action-buttons";
 import { Button } from "@/components/ui/button";
 import { ButtonGroup } from "@/components/ui/button-group";
 import {
@@ -52,7 +52,7 @@ import {
   EmptyHeader,
   EmptyTitle,
 } from "@/components/ui/empty";
-import { useRepoHeader } from "@/components/repo/repo-header-context";
+import { useRepoHeader } from "@/app/(main)/[owner]/[repo]/[branch]/_components/repo/repo-header-context";
 import {
   Breadcrumb,
   BreadcrumbEllipsis,

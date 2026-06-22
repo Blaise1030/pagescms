@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Entry } from "@/components/entry/entry";
+import { Entry } from "@/app/(main)/[owner]/[repo]/[branch]/_components/entry/entry";
 import {
   DocumentTitle,
   formatRepoBranchTitle,

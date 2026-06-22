@@ -4,7 +4,7 @@ import { headers, cookies } from "next/headers";
 import { getConfig } from "@/lib/config-store";
 import { ConfigProvider } from "@/contexts/config-context";
 import type { ConfigState } from "@/contexts/config-context";
-import { RepoLayout } from "@/components/repo/repo-layout";
+import { RepoLayout } from "@/app/(main)/[owner]/[repo]/[branch]/_components/repo/repo-layout";
 import { getServerSession } from "@/lib/session-server";
 import { getToken } from "@/lib/token";
 import { AppLoadingShell } from "@/components/app-loading-shell";

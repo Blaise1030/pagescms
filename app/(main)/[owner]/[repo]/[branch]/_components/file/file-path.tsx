@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, Fragment, useState } from "react";
-import { FileRename } from "@/components/file/file-rename";
+import { FileRename } from "@/app/(main)/[owner]/[repo]/[branch]/_components/file/file-rename";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Pencil } from "lucide-react";
 import { Ellipsis, ChevronRight, Folder } from "lucide-react";

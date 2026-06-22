@@ -25,7 +25,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 import { ArrowUpRight } from "lucide-react";
-import { FileRename } from "@/components/file/file-rename";
+import { FileRename } from "@/app/(main)/[owner]/[repo]/[branch]/_components/file/file-rename";
 
 export function FileOptions({
   path,

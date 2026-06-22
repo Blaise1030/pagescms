@@ -2,7 +2,7 @@
 
 import { use } from "react";
 import { useSearchParams } from "next/navigation";
-import { MediaView} from "@/components/media/media-view";
+import { MediaView} from "@/app/(main)/[owner]/[repo]/[branch]/_components/media/media-view";
 import { DocumentTitle, formatRepoBranchTitle } from "@/components/document-title";
 import { useConfig } from "@/contexts/config-context";
 import { getSchemaByName } from "@/lib/schema";

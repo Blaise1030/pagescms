@@ -4,7 +4,7 @@ import { Fragment, memo, type ReactNode, startTransition, useCallback, useEffect
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useConfig } from "@/contexts/config-context";
-import { RepoActionButtons } from "@/components/repo/repo-action-buttons";
+import { RepoActionButtons } from "@/app/(main)/[owner]/[repo]/[branch]/_components/repo/repo-action-buttons";
 import {
   extensionCategories,
   getFileSize,
@@ -15,8 +15,8 @@ import {
   normalizePath
 } from "@/lib/utils/file";
 import { FolderCreate} from "@/components/folder-create";
-import { FileOptions } from "@/components/file/file-options";
-import { useOptionalRepoHeader } from "@/components/repo/repo-header-context";
+import { FileOptions } from "@/app/(main)/[owner]/[repo]/[branch]/_components/file/file-options";
+import { useOptionalRepoHeader } from "@/app/(main)/[owner]/[repo]/[branch]/_components/repo/repo-header-context";
 import { MediaUpload} from "./media-upload";
 import { Thumbnail } from "@/components/thumbnail";
 import { Button, buttonVariants } from "@/components/ui/button";

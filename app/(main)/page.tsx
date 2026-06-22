@@ -4,8 +4,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useUser } from "@/contexts/user-context";
-import { RepoSelect } from "@/components/repo/repo-select";
-import { RepoTemplates } from "@/components/repo/repo-templates";
+import { RepoSelect } from "@/app/(main)/[owner]/[repo]/[branch]/_components/repo/repo-select";
+import { RepoTemplates } from "@/app/(main)/[owner]/[repo]/[branch]/_components/repo/repo-templates";
 import { DocumentTitle } from "@/components/document-title";
 import { hasGithubIdentity } from "@/lib/authz-shared";
 import {

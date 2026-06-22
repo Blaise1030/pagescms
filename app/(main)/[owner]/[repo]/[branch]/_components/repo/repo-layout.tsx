@@ -1,6 +1,6 @@
 "use client";
 
-import { RepoSidebar } from "@/components/repo/repo-sidebar";
+import { RepoSidebar } from "@/app/(main)/[owner]/[repo]/[branch]/_components/repo/repo-sidebar";
 import {
   SidebarInset,
   SidebarProvider,
@@ -9,7 +9,7 @@ import {
 import {
   RepoHeaderProvider,
   useRepoHeaderState,
-} from "@/components/repo/repo-header-context";
+} from "@/app/(main)/[owner]/[repo]/[branch]/_components/repo/repo-header-context";
 
 function RepoHeader() {
   const { header } = useRepoHeaderState();

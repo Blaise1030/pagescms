@@ -4,7 +4,7 @@ import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { BookText, RefreshCcw, Trash2 } from "lucide-react";
-import { useRepoHeader } from "@/components/repo/repo-header-context";
+import { useRepoHeader } from "@/app/(main)/[owner]/[repo]/[branch]/_components/repo/repo-header-context";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,

@@ -12,7 +12,7 @@ import {
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useConfig } from "@/contexts/config-context";
-import { RepoActionButtons } from "@/components/repo/repo-action-buttons";
+import { RepoActionButtons } from "@/app/(main)/[owner]/[repo]/[branch]/_components/repo/repo-action-buttons";
 import {
   getParentPath,
   getFileName,
@@ -29,10 +29,10 @@ import {
 } from "@/lib/schema";
 import { requireApiSuccess } from "@/lib/api-client";
 import { EmptyCreate } from "@/components/empty-create";
-import { FileOptions } from "@/components/file/file-options";
+import { FileOptions } from "@/app/(main)/[owner]/[repo]/[branch]/_components/file/file-options";
 import { CollectionTable } from "./collection-table";
 import { FolderCreate } from "@/components/folder-create";
-import { useRepoHeader } from "@/components/repo/repo-header-context";
+import { useRepoHeader } from "@/app/(main)/[owner]/[repo]/[branch]/_components/repo/repo-header-context";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { ButtonGroup } from "@/components/ui/button-group";
 import {

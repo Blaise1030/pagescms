@@ -13,7 +13,7 @@ import {
   Loader,
 } from "lucide-react";
 import { toast } from "sonner";
-import { useRepoHeader } from "@/components/repo/repo-header-context";
+import { useRepoHeader } from "@/app/(main)/[owner]/[repo]/[branch]/_components/repo/repo-header-context";
 import { useActionToasts } from "@/contexts/action-toast-context";
 import { getInitialsFromName } from "@/lib/utils/avatar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";

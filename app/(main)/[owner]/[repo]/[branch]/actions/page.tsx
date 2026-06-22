@@ -1,6 +1,6 @@
 "use client";
 
-import { ActionsPage } from "@/components/actions/actions-page";
+import { ActionsPage } from "@/app/(main)/[owner]/[repo]/[branch]/_components/actions/actions-page";
 import { DocumentTitle, formatRepoBranchTitle } from "@/components/document-title";
 import { useConfig } from "@/contexts/config-context";
 import { useUser } from "@/contexts/user-context";

@@ -3,7 +3,7 @@
 import { use } from "react";
 import { useSearchParams } from "next/navigation";
 import { DocumentTitle, formatRepoBranchTitle } from "@/components/document-title";
-import { Entry } from "@/components/entry/entry";
+import { Entry } from "@/app/(main)/[owner]/[repo]/[branch]/_components/entry/entry";
 import { useConfig } from "@/contexts/config-context";
 import { getSchemaByName } from "@/lib/schema";
 
