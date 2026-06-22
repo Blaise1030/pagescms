@@ -1,14 +1,15 @@
 "use client";
 
-import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader as LucideLoader } from "lucide-react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useConfig } from "@/app/(main)/[owner]/[repo]/[branch]/_contexts/config-context";
 import { normalizePath } from "@/lib/utils/file";
 import { getSchemaByName, initializeState } from "@/lib/schema";
 import { requireApiSuccess } from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { queryKeys } from "@/lib/query-keys";
 
 const EmptyCreate = ({
   children,
@@ -25,7 +26,7 @@ const EmptyCreate = ({
   if (!config) throw new Error(`Configuration not found.`);
 
   const router = useRouter();
-  const [isCreating, setIsCreating] = useState(false);
+  const queryClient = useQueryClient();
 
   let path = "";
   let content: string | Record<string, any> = "";
@@ -66,26 +67,38 @@ const EmptyCreate = ({
     throw new Error(`Invalid type "${type}".`);
   }
   
+  const createMutation = useMutation({
+    mutationFn: async ({ filePath, body }: { filePath: string; body: object }) => {
+      const response = await fetch(
+        `/api/${config.owner}/${config.repo}/${encodeURIComponent(config.branch)}/files/${encodeURIComponent(normalizePath(filePath))}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        },
+      );
+      return requireApiSuccess<any>(response, "Failed to create file");
+    },
+    onSuccess: () => {
+      if (name) {
+        void queryClient.invalidateQueries({ queryKey: queryKeys.collectionAll(config.owner, config.repo, config.branch, name) });
+      }
+    },
+  });
+
   const handleCreate = async () => {
-    if (isCreating) return;
-    setIsCreating(true);
     const toastId = toast.loading(`Creating ${toCreate}...`);
 
     try {
-      const response = await fetch(`/api/${config.owner}/${config.repo}/${encodeURIComponent(config.branch)}/files/${encodeURIComponent(normalizePath(path))}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      await createMutation.mutateAsync({
+        filePath: path,
+        body: {
           type,
           name,
           content,
           ...(path.endsWith("/.gitkeep") ? { onConflict: "error" } : {}),
-        }),
+        },
       });
-      await requireApiSuccess<any>(
-        response,
-        `Failed to create ${toCreate}`,
-      );
 
       toast.loading(`Opening ${toCreate}...`, { id: toastId });
       onCreate?.(normalizePath(path));
@@ -94,7 +107,6 @@ const EmptyCreate = ({
       router.refresh();
       toast.success(`Created ${toCreate}. Opening...`, { id: toastId });
     } catch (error) {
-      setIsCreating(false);
       toast.error(error instanceof Error ? error.message : `Failed to create ${toCreate}.`, {
         id: toastId,
       });
@@ -102,8 +114,8 @@ const EmptyCreate = ({
   };
 
   return (
-    <Button type="button" onClick={handleCreate} disabled={isCreating}>
-      {isCreating ? (
+    <Button type="button" onClick={handleCreate} disabled={createMutation.isPending}>
+      {createMutation.isPending ? (
         <span className="inline-flex items-center gap-x-2">
           Creating...
           <LucideLoader className="h-4 w-4 animate-spin" />
