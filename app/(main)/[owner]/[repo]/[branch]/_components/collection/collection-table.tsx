@@ -195,7 +195,7 @@ export function CollectionTable<TData extends TableData>({
                   <TableHead
                     key={header.id}
                     className={cn(
-                      "p-2 h-10 border-b hover:bg-muted/50 cursor-pointer select-none last:cursor-default last:hover:bg-background last:dark:hover:bg-accent/30 truncate",
+                      "px-4 h-10 border-b hover:bg-muted/50 cursor-pointer select-none last:cursor-default last:hover:bg-background last:dark:hover:bg-accent/30 truncate",
                       header.column.columnDef.meta?.className
                     )}
                     onClick={header.column.getToggleSortingHandler()}
@@ -236,7 +236,7 @@ export function CollectionTable<TData extends TableData>({
                     ? <>
                       <TableCell
                         colSpan={columns.length - 1}
-                        className="p-2 border-b py-0 h-12"
+                        className="px-4 border-b py-0 h-12"
                         style={{
                           paddingLeft: row.depth > 0
                             ? `${row.depth * 2}rem`
@@ -265,7 +265,7 @@ export function CollectionTable<TData extends TableData>({
                             </Link>
                         }
                       </TableCell>
-                      <TableCell className="p-2 border-b py-0 h-12">
+                      <TableCell className="px-4 border-b py-0 h-12">
                         {
                           (() => {
                             const lastCell = row.getVisibleCells()[row.getVisibleCells().length - 1];
@@ -278,7 +278,7 @@ export function CollectionTable<TData extends TableData>({
                       <TableCell
                         key={cell.id}
                         className={cn(
-                          "p-2 border-b py-0 h-12",
+                          "px-4 border-b py-0 h-12",
                           cell.column.columnDef.meta?.className,
                         )}
                         style={{
@@ -323,7 +323,7 @@ export function CollectionTable<TData extends TableData>({
         </TableBody>
       </Table>
       {pageCount > 1 && (
-        <footer className="flex items-center justify-end">
+        <footer className="flex items-center justify-end px-4">
           <Pagination className="mx-0 w-auto justify-end">
             <PaginationContent>
               <PaginationItem>

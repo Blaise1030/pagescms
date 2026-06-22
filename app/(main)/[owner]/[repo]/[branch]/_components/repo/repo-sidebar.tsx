@@ -8,6 +8,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useConfig } from "@/app/(main)/[owner]/[repo]/[branch]/_contexts/config-context";
@@ -16,9 +17,10 @@ import { useUser } from "@/contexts/user-context";
 import { hasGithubIdentity } from "@/lib/authz-shared";
 import { isCacheEnabled, isConfigEnabled } from "@/lib/config";
 import { getRootActions } from "@/lib/actions";
-import { getVisits } from "@/lib/tracker";
+import { signOut } from "@/lib/auth-client";
 import { RepoActionButtons } from "@/app/(main)/[owner]/[repo]/[branch]/_components/repo/repo-action-buttons";
 import { RepoBranches } from "@/app/(main)/[owner]/[repo]/[branch]/_components/repo/repo-branches";
+import { RepoCombobox } from "@/app/(main)/[owner]/[repo]/[branch]/_components/repo/repo-combobox";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { User } from "@/components/user";
 import { AdminButton } from "@/app/(main)/admin/_components/admin-button";
@@ -31,6 +33,9 @@ import {
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -60,7 +65,6 @@ import {
 } from "@/components/ui/dialog";
 import {
   ArrowLeft,
-  ArrowUpRight,
   ChevronRight,
   ChevronsUpDown,
   Database,
@@ -93,14 +97,31 @@ function RepoSwitcher() {
   const router = useRouter();
   const { owner, repo, branches = [] } = useRepo();
   const { config } = useConfig();
+  const { user } = useUser();
   const currentBranch = config?.branch ?? "";
   const sortedBranches = useMemo(
     () => [...branches].sort((a, b) => a.localeCompare(b)),
     [branches],
   );
-  const [recentRepos, setRecentRepos] = useState<
-    Array<{ owner: string; repo: string; branch: string }>
-  >([]);
+  const { data: allReposData } = useQuery({
+    queryKey: ["repos", owner],
+    queryFn: async () => {
+      const res = await fetch(`/api/repos/${owner}?repository_selection=selected`);
+      const json = (await res.json()) as {
+        data: Array<{ owner: string; repo: string; defaultBranch: string }>;
+      };
+      return json.data;
+    },
+  });
+
+  const otherRepos = useMemo(
+    () =>
+      (allReposData ?? [])
+        .filter((r) => r.repo.toLowerCase() !== repo.toLowerCase())
+        .map((r) => ({ owner: r.owner, repo: r.repo, branch: r.defaultBranch })),
+    [allReposData, repo],
+  );
+
   const triggerWrapperRef = useRef<HTMLDivElement | null>(null);
   const [menuWidth, setMenuWidth] = useState<number | null>(null);
 
@@ -124,27 +145,7 @@ function RepoSwitcher() {
     };
   }, []);
 
-  const loadRecentRepos = useCallback(() => {
-    const visits = getVisits()
-      .filter(
-        (visit) =>
-          !(
-            visit.owner.toLowerCase() === owner.toLowerCase() &&
-            visit.repo.toLowerCase() === repo.toLowerCase()
-          ),
-      )
-      .slice(0, 3)
-      .map((visit) => ({
-        owner: visit.owner,
-        repo: visit.repo,
-        branch: visit.branch,
-      }));
-    setRecentRepos(visits);
-  }, [owner, repo]);
-
-  useEffect(() => {
-    loadRecentRepos();
-  }, [loadRecentRepos]);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
 
   const handleBranchChange = (branch: string) => {
     router.push(`/${owner}/${repo}/${encodeURIComponent(branch)}`);
@@ -154,9 +155,8 @@ function RepoSwitcher() {
     <Dialog>
       <div ref={triggerWrapperRef}>
         <DropdownMenu
-          onOpenChange={(open) => {
-            if (open) loadRecentRepos();
-          }}
+          open={dropdownOpen}
+          onOpenChange={setDropdownOpen}
         >
           <DropdownMenuTrigger asChild>
             <SidebarMenuButton
@@ -182,20 +182,16 @@ function RepoSwitcher() {
             align="start"
             style={
               menuWidth
-                ? { width: `${menuWidth}px`, minWidth: `${menuWidth}px` }
-                : undefined
+                ? { width: `${Math.max(menuWidth, 220)}px`, minWidth: "220px" }
+                : { minWidth: "220px" }
             }
           >
             <DropdownMenuItem asChild>
-              <a
-                href={`https://github.com/${owner}/${repo}`}
-                target="_blank"
-                rel="noreferrer"
-              >
-                View on GitHub
-                <ArrowUpRight className="size-3 text-muted-foreground ml-auto" />
-              </a>
+              <Link href="/settings">Settings</Link>
             </DropdownMenuItem>
+            <DialogTrigger asChild>
+              <DropdownMenuItem>Manage branches</DropdownMenuItem>
+            </DialogTrigger>
             <DropdownMenuSeparator />
             <DropdownMenuLabel className="text-xs text-muted-foreground">
               Branches
@@ -210,41 +206,32 @@ function RepoSwitcher() {
                 </DropdownMenuRadioItem>
               ))}
             </DropdownMenuRadioGroup>
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger>Switch project</DropdownMenuSubTrigger>
+                <DropdownMenuSubContent>
+                  <RepoCombobox
+                    email={user?.email}
+                    currentOwner={owner}
+                    currentRepo={repo}
+                    currentBranch={currentBranch}
+                    repos={otherRepos}
+                    onSelect={() => setDropdownOpen(false)}
+                  />
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+            </>
             <DropdownMenuSeparator />
-            <DialogTrigger asChild>
-              <DropdownMenuItem>Manage branches</DropdownMenuItem>
-            </DialogTrigger>
-            {recentRepos.length > 0 && (
-              <>
-                <DropdownMenuSeparator />
-                <DropdownMenuLabel className="text-xs text-muted-foreground">
-                  Recently visited
-                </DropdownMenuLabel>
-                {recentRepos.map((visit) => (
-                  <DropdownMenuItem
-                    asChild
-                    key={`${visit.owner}/${visit.repo}/${visit.branch}`}
-                  >
-                    <Link
-                      href={`/${visit.owner}/${visit.repo}/${encodeURIComponent(visit.branch)}`}
-                    >
-                      <img
-                        src={`https://github.com/${visit.owner}.png`}
-                        alt={`${visit.owner}'s avatar`}
-                        className="size-5 rounded"
-                      />
-                      <span className="truncate">{visit.repo}</span>
-                    </Link>
-                  </DropdownMenuItem>
-                ))}
-              </>
-            )}
-            <DropdownMenuSeparator />
-            <DropdownMenuItem asChild>
-              <Link href={"/settings"}>Settings</Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <Link href="/">All projects</Link>
+            <DropdownMenuItem
+              variant="destructive"
+              onClick={async () => {
+                await signOut();
+                window.location.assign("/sign-in");
+              }}
+            >
+              <LogOut className="size-4" />
+              Log out
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

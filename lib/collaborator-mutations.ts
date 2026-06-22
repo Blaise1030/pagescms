@@ -2,7 +2,6 @@ import { getInstallationRepos, getInstallations } from "@/lib/github-app";
 import { requireGithubRepoWriteAccess } from "@/lib/authz-server";
 import { InviteEmailTemplate } from "@/components/email/invite";
 import { CollaboratorAddedEmailTemplate } from "@/components/email/collaborator-added";
-import { render } from "@react-email/render";
 import { sendEmail } from "@/lib/mailer";
 import { getBaseUrl } from "@/lib/base-url";
 import { APP_NAME } from "@/lib/brand";
@@ -142,6 +141,7 @@ const addCollaborators = async (
         baseUrl,
       });
       try {
+        const { render } = await import("@react-email/render");
         const html = await render(
           InviteEmailTemplate({
             inviteUrl,
@@ -164,6 +164,7 @@ const addCollaborators = async (
       }
     } else {
       try {
+        const { render } = await import("@react-email/render");
         const html = await render(
           CollaboratorAddedEmailTemplate({
             email: normalizedEmail,
@@ -304,6 +305,7 @@ const resendCollaboratorInvite = async (
     baseUrl,
   });
 
+  const { render } = await import("@react-email/render");
   const html = await render(
     InviteEmailTemplate({
       inviteUrl,

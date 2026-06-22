@@ -1007,6 +1007,7 @@ export function Entry({
       ) : (
         <>
           {showDraftBanner && draftContent && (
+            <div className="w-full max-w-screen-md mx-auto">
             <DraftRestoreBanner
               onRestore={() => {
                 setEntry((prev) => prev ? { ...prev, contentObject: draftContent } : prev);
@@ -1018,6 +1019,7 @@ export function Entry({
                 setShowDraftBanner(false);
               }}
             />
+            </div>
           )}
           <EntryForm
             fields={entryFields}

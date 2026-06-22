@@ -29,7 +29,7 @@ export default function Page({
   const path = searchParams.get("path") || "";
 
   return (
-    <div className="px-2 py-3">
+    <div>
       <DocumentTitle
         title={formatRepoBranchTitle(schema.label || schema.name, config.owner, config.repo, config.branch)}
       />
