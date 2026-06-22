@@ -71,7 +71,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton"
 import { toast } from "sonner";
 import { ArrowLeft, EllipsisVertical, Lock, LockOpen, Save } from "lucide-react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query-keys";
 import { useSidebarOptional } from "@/components/ui/sidebar";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle, usePanelRef } from "@/components/ui/resizable";
@@ -173,6 +173,47 @@ export function Entry({
   }, [config, name]);
   const schemaType = schema?.type;
 
+  const createEntryMutation = useMutation({
+    mutationFn: async ({ savePath, body }: { savePath: string; body: object }) => {
+      const response = await fetch(
+        `/api/${config.owner}/${config.repo}/${encodeURIComponent(config.branch)}/files/${encodeURIComponent(savePath)}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        },
+      );
+      return requireApiSuccess<any>(response, "Failed to save file");
+    },
+    onSuccess: (data) => {
+      if (data.data.sha) setSha(data.data.sha);
+      if (schemaType === "collection") {
+        void queryClient.invalidateQueries({
+          queryKey: queryKeys.collectionAll(config.owner, config.repo, config.branch, name),
+        });
+      }
+    },
+  });
+
+  const renameEntryMutation = useMutation({
+    mutationFn: async ({ fromPath, toPath }: { fromPath: string; toPath: string }) => {
+      const response = await fetch(
+        `/api/${config.owner}/${config.repo}/${encodeURIComponent(config.branch)}/files/${encodeURIComponent(fromPath)}/rename`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ type: "content", name, newPath: toPath }),
+        },
+      );
+      return requireApiSuccess<any>(response, "Failed to rename file");
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.collectionAll(config.owner, config.repo, config.branch, name),
+      });
+    },
+  });
+
   const {
     entry: storeEntry,
     hasDraft: storeHasDraft,
@@ -199,10 +240,14 @@ export function Entry({
   );
 
   useEffect(() => {
-    if (previewUrl) sidebar?.setOpen(false);
-  // ponytail: run once on mount only
+    if (!previewUrl) return;
+    const url = new URL(window.location.href);
+    if (url.searchParams.get("hideSidebar") === "true") return;
+    url.searchParams.set("hideSidebar", "true");
+    window.history.replaceState(null, "", url.pathname + "?" + url.searchParams.toString());
+  // ponytail: run once when previewUrl is determined
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [previewUrl]);
   const operations = useMemo(
     () =>
       resolveContentOperations({
@@ -400,28 +445,19 @@ export function Entry({
             : generateFilename(schema.filename, schema, contentObject);
           const savePath = joinPathSegments([basePath, generatedFilename]);
 
-          const response = await fetch(
-            `/api/${config.owner}/${config.repo}/${encodeURIComponent(config.branch)}/files/${encodeURIComponent(savePath)}`,
-            {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                type: "content",
-                name,
-                content: schema?.list === true ? contentObject.listWrapper : contentObject,
-                sha: undefined,
-              }),
-            }
-          );
-          const data = await requireApiSuccess<any>(response, "Failed to save file");
-          if (data.data.sha) setSha(data.data.sha);
+          const data = await createEntryMutation.mutateAsync({
+            savePath,
+            body: {
+              type: "content",
+              name,
+              content: schema?.list === true ? contentObject.listWrapper : contentObject,
+              sha: undefined,
+            },
+          });
           if (schemaType === "collection") {
             router.push(
               `/${config.owner}/${config.repo}/${encodeURIComponent(config.branch)}/collection/${encodeURIComponent(name)}/edit/${encodeURIComponent(data.data.path)}`
             );
-            void queryClient.invalidateQueries({
-              queryKey: queryKeys.collectionAll(config.owner, config.repo, config.branch, name),
-            });
           }
           resolve(data);
         } catch (error) {
@@ -465,24 +501,13 @@ export function Entry({
     ) {
       if (!canRename) throw new Error("Renaming this entry isn't allowed.");
       const newPath = joinPathSegments([getParentPath(savePath), normalizedFilename]);
-      const renameResponse = await fetch(
-        `/api/${config.owner}/${config.repo}/${encodeURIComponent(config.branch)}/files/${encodeURIComponent(savePath)}/rename`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ type: "content", name, newPath }),
-        }
-      );
-      await requireApiSuccess<any>(renameResponse, "Failed to rename file");
+      await renameEntryMutation.mutateAsync({ fromPath: savePath, toPath: newPath });
       savePath = newPath;
       setPath(newPath);
       setIsFilenameUnlocked(false);
       router.replace(
         `/${config.owner}/${config.repo}/${encodeURIComponent(config.branch)}/collection/${encodeURIComponent(name)}/edit/${encodeURIComponent(newPath)}`
       );
-      void queryClient.invalidateQueries({
-        queryKey: queryKeys.collectionAll(config.owner, config.repo, config.branch, name),
-      });
     }
 
     void executeSave(contentObject, savePath);
@@ -769,7 +794,7 @@ export function Entry({
   const headerNode = useMemo(() => (
     <div className="flex min-w-0 items-center gap-2">
       {previewUrl && (
-        <Button type="button" variant="outline" size="icon" onClick={() => router.back()} aria-label="Back">
+        <Button type="button" variant="ghost" size="icon" onClick={() => router.back()} aria-label="Back">
           <ArrowLeft className="size-4" />
         </Button>
       )}
@@ -952,7 +977,7 @@ export function Entry({
   const editorContent = (
     <div className="w-full flex flex-col items-start gap-6 px-2 py-3 pr-4">
       {path && (
-        <div className="flex gap-1">
+        <div className="w-full max-w-screen-md mx-auto flex gap-1">
           <Button
             type="button"
             variant={activeTab === "content" ? "secondary" : "ghost"}
@@ -974,9 +999,11 @@ export function Entry({
         </div>
       )}
       {activeTab === "history" && path ? (
-        historyData && historyData.length > 0
-          ? <EntryHistoryBlock path={path} history={historyData} />
-          : <p className="text-sm text-muted-foreground">Loading history…</p>
+        <div className="w-full max-w-screen-md mx-auto">
+          {historyData && historyData.length > 0
+            ? <EntryHistoryBlock path={path} history={historyData} />
+            : <p className="text-sm text-muted-foreground">Loading history…</p>}
+        </div>
       ) : (
         <>
           {showDraftBanner && draftContent && (
