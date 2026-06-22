@@ -5,7 +5,7 @@
  */
 
 import { z } from "zod";
-import { fieldTypes } from "@/fields/registry";
+import { getCodec } from "@/fields/registry";
 
 const ActionSchema = z
   .object({
@@ -381,7 +381,7 @@ const generateFieldObjectSchema = (
           })
           .min(1, { message: "'type' cannot be empty." })
           .refine(
-            (val) => fieldTypes.has(val) || ["object", "block"].includes(val),
+            (val) => getCodec(val) !== undefined || ["object", "block"].includes(val),
             {
               message: "'type' must be a valid field type.",
               path: ["type"],

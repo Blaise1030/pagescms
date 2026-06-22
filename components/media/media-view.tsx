@@ -42,7 +42,8 @@ import { cn } from "@/lib/utils";
 import { requireApiSuccess } from "@/lib/api-client";
 import { getSchemaActions } from "@/lib/actions";
 import type { FileSaveData, MediaItem } from "@/types/api";
-import useSWR, { useSWRConfig } from "swr";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "@/lib/query-keys";
 import {
   CornerLeftUp,
   House,
@@ -213,7 +214,7 @@ const MediaView = ({
 }) => {
   const { config } = useConfig();
   if (!config) throw new Error(`Configuration not found.`);
-  const { mutate } = useSWRConfig();
+  const queryClient = useQueryClient();
 
   const mediaConfig = useMemo(() => {
     if (!media) return config.object.media[0];
@@ -289,7 +290,10 @@ const MediaView = ({
     `/api/${config.owner}/${config.repo}/${encodeURIComponent(config.branch)}/media/${encodeURIComponent(mediaConfig.name)}/${encodeURIComponent(targetPath)}`
   ), [config.branch, config.owner, config.repo, mediaConfig.name]);
 
-  const mediaKey = useMemo(() => buildMediaApiUrl(path), [buildMediaApiUrl, path]);
+  const mediaKey = useMemo(
+    () => queryKeys.media(config.owner, config.repo, config.branch, mediaConfig.name, path),
+    [config.owner, config.repo, config.branch, mediaConfig.name, path],
+  );
   const fetchMediaByUrl = useCallback(async (apiUrl: string): Promise<MediaItem[]> => {
     const response = await fetch(apiUrl);
     const payload = await requireApiSuccess<any>(
@@ -300,32 +304,28 @@ const MediaView = ({
   }, []);
 
   const {
-    data: swrMediaData,
-    error: swrMediaError,
-    isLoading: swrMediaLoading,
-  } = useSWR<MediaItem[]>(
-    mediaKey,
-    fetchMediaByUrl,
-    {
-      revalidateOnFocus: true,
-      revalidateOnReconnect: true,
-      dedupingInterval: 2000,
-    },
-  );
+    data: queryMediaData,
+    error: queryMediaError,
+    isLoading: queryMediaLoading,
+  } = useQuery<MediaItem[]>({
+    queryKey: mediaKey,
+    queryFn: () => fetchMediaByUrl(buildMediaApiUrl(path)),
+    staleTime: 30_000,
+  });
 
   useEffect(() => {
-    if (!swrMediaData) return;
-    setData(swrMediaData);
+    if (!queryMediaData) return;
+    setData(queryMediaData);
     setError(null);
-  }, [swrMediaData]);
+  }, [queryMediaData]);
 
   useEffect(() => {
-    if (!swrMediaError) return;
-    const message = swrMediaError instanceof Error ? swrMediaError.message : "Failed to fetch media.";
+    if (!queryMediaError) return;
+    const message = queryMediaError instanceof Error ? queryMediaError.message : "Failed to fetch media.";
     setError(message);
-  }, [swrMediaError]);
+  }, [queryMediaError]);
 
-  const isLoading = swrMediaLoading && !data;
+  const isLoading = queryMediaLoading && !data;
 
   const handleUpload = useCallback((entry: FileSaveData) => {
     if (!entry.path || !entry.name) return;
@@ -351,9 +351,11 @@ const MediaView = ({
 
         return sortMediaItems([...prevData, mediaEntry]);
     });
-    void mutate((key) => typeof key === "string" && key.includes(`/media/${encodeURIComponent(mediaConfig.name)}/`));
+    void queryClient.invalidateQueries({
+      queryKey: queryKeys.mediaAll(config.owner, config.repo, config.branch, mediaConfig.name),
+    });
     onUpload?.(entry);
-  }, [mediaConfig.name, mutate, onUpload, sortMediaItems]);
+  }, [config.owner, config.repo, config.branch, mediaConfig.name, onUpload, queryClient, sortMediaItems]);
 
   const handleDelete = useCallback((deletedPath: string) => {
     setData((prevData) => {
@@ -361,8 +363,10 @@ const MediaView = ({
       const next = prevData.filter((item) => item.path !== deletedPath);
       return next.length === prevData.length ? prevData : next;
     });
-    void mutate((key) => typeof key === "string" && key.includes(`/media/${encodeURIComponent(mediaConfig.name)}/`));
-  }, [mediaConfig.name, mutate]);
+    void queryClient.invalidateQueries({
+      queryKey: queryKeys.mediaAll(config.owner, config.repo, config.branch, mediaConfig.name),
+    });
+  }, [config.owner, config.repo, config.branch, mediaConfig.name, queryClient]);
 
   const handleRename = useCallback((oldPath: string, newPath: string) => {
     setData((prevData) => {
@@ -381,8 +385,10 @@ const MediaView = ({
       const next = prevData.filter((item) => item.path !== oldPath);
       return next.length === prevData.length ? prevData : next;
     });
-    void mutate((key) => typeof key === "string" && key.includes(`/media/${encodeURIComponent(mediaConfig.name)}/`));
-  }, [mediaConfig.name, mutate, sortMediaItems]);
+    void queryClient.invalidateQueries({
+      queryKey: queryKeys.mediaAll(config.owner, config.repo, config.branch, mediaConfig.name),
+    });
+  }, [config.owner, config.repo, config.branch, mediaConfig.name, queryClient, sortMediaItems]);
 
   const handleFolderCreate = useCallback((entry: unknown) => {
     const createdPath = typeof entry === "string"
@@ -411,8 +417,10 @@ const MediaView = ({
       }
       return sortMediaItems([...prevData, parent]);
     });
-    void mutate((key) => typeof key === "string" && key.includes(`/media/${encodeURIComponent(mediaConfig.name)}/`));
-  }, [mediaConfig.name, mutate, sortMediaItems]);
+    void queryClient.invalidateQueries({
+      queryKey: queryKeys.mediaAll(config.owner, config.repo, config.branch, mediaConfig.name),
+    });
+  }, [config.owner, config.repo, config.branch, mediaConfig.name, queryClient, sortMediaItems]);
 
   const handleNavigate = useCallback((newPath: string) => {
     setPath(newPath);

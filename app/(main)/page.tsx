@@ -2,10 +2,10 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useUser } from "@/contexts/user-context";
 import { RepoSelect } from "@/components/repo/repo-select";
 import { RepoTemplates } from "@/components/repo/repo-templates";
-import { RepoLatest } from "@/components/repo/repo-latest";
 import { DocumentTitle } from "@/components/document-title";
 import { hasGithubIdentity } from "@/lib/authz-shared";
 import {
@@ -17,16 +17,26 @@ import {
 } from "@/components/ui/empty";
 import { MainRootLayout } from "./main-root-layout";
 import { getVisits } from "@/lib/tracker";
+import { AppLoadingShell } from "@/components/app-loading-shell";
 
 export default function Page() {
   const [defaultAccount, setDefaultAccount] = useState<any>(null);
-  const [hasRecentVisits, setHasRecentVisits] = useState(false);
+  const [redirecting, setRedirecting] = useState(true);
   const { user } = useUser();
+  const router = useRouter();
   const isGithubUser = hasGithubIdentity(user);
 
   useEffect(() => {
-    setHasRecentVisits(getVisits().length > 0);
-  }, []);
+    const visits = getVisits();
+    if (visits.length > 0) {
+      const { owner, repo, branch } = visits[0];
+      router.replace(`/${owner}/${repo}/${branch}`);
+    } else {
+      setRedirecting(false);
+    }
+  }, [router]);
+
+  if (redirecting) return <AppLoadingShell />;
 
   if (!user) throw new Error("User not found");
   if (!user.accounts) throw new Error("Accounts not found");
@@ -37,14 +47,6 @@ export default function Page() {
       <div className="max-w-screen-sm mx-auto p-4 md:p-6 space-y-8">
         {user.accounts.length > 0 ? (
           <div className="min-h-[calc(100vh-12rem)] flex flex-col justify-center space-y-8">
-            {hasRecentVisits && (
-              <div className="space-y-4">
-                <h2 className="text-lg font-medium tracking-tight">
-                  Recently visited
-                </h2>
-                <RepoLatest />
-              </div>
-            )}
             <div className="space-y-4">
               <h2 className="text-lg font-medium tracking-tight">
                 Open a project

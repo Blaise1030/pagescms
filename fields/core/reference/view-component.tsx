@@ -1,9 +1,10 @@
 "use client";
 
-import useSWR from "swr";
+import { useQuery } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
 import { useConfig } from "@/contexts/config-context";
 import { getSchemaByName } from "@/lib/schema";
+import { queryKeys } from "@/lib/query-keys";
 import { Field } from "@/types/field";
 
 const normalizeValue = (item: unknown): string => {
@@ -17,10 +18,10 @@ const normalizeValue = (item: unknown): string => {
   return "";
 };
 
-const fetcher = async (url: string) => {
+const fetcher = async (url: string): Promise<Record<string, unknown>[]> => {
   const response = await fetch(url);
   if (!response.ok) throw new Error("Failed to load references");
-  const json = await response.json();
+  const json = await response.json() as { data?: { options?: Record<string, unknown>[] } };
   return Array.isArray(json?.data?.options) ? json.data.options : [];
 };
 
@@ -52,12 +53,19 @@ const ViewComponent = ({ value, field }: { value: unknown; field: Field }) => {
   }) : null;
   selectedValues.forEach((item) => params?.append("value", item));
 
-  const { data } = useSWR(
-    config && collection && selectedValues.length > 0
-      ? `/api/${config.owner}/${config.repo}/${encodeURIComponent(config.branch)}/references/${collectionName}?${params?.toString()}`
-      : null,
-    fetcher
-  );
+  const queryString = params?.toString() ?? "";
+  const referenceEnabled = !!(config && collection && selectedValues.length > 0 && queryString);
+
+  const { data } = useQuery({
+    queryKey: referenceEnabled && collectionName
+      ? queryKeys.reference(config.owner, config.repo, config.branch, collectionName, queryString)
+      : ['reference-disabled'],
+    queryFn: () => fetcher(
+      `/api/${config!.owner}/${config!.repo}/${encodeURIComponent(config!.branch)}/references/${collectionName}?${queryString}`,
+    ),
+    enabled: referenceEnabled,
+    staleTime: 30_000,
+  });
 
   const labelsByValue = new Map<string, string>();
   data?.forEach((item: Record<string, unknown>) => {

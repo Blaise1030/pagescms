@@ -33,7 +33,7 @@ export function AppLoadingShell() {
         )}
       >
         <div className="flex min-h-svh flex-1 items-center justify-center">
-          <div className="rounded-md bg-foreground p-1 animate-pulse">
+          <div className="rounded-md bg-muted p-0.5 animate-pulse">
             <AppLogo className="size-8" />
           </div>
         </div>

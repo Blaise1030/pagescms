@@ -19,7 +19,7 @@ import {
   useWatch,
 } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { editComponents } from "@/fields/registry";
+import { getCodec } from "@/fields/registry";
 import {
   initializeState,
   getDefaultValue,
@@ -957,13 +957,13 @@ const SingleField = ({
   } else {
     let FieldComponent;
 
-    if (typeof field.type === "string" && editComponents[field.type]) {
-      FieldComponent = editComponents[field.type];
+    if (typeof field.type === "string" && getCodec(field.type)?.EditComponent) {
+      FieldComponent = getCodec(field.type)!.EditComponent!;
     } else {
       console.warn(
         `No component found for field type: ${field.type}. Defaulting to 'text'.`,
       );
-      FieldComponent = editComponents["text"];
+      FieldComponent = getCodec("text")!.EditComponent!;
     }
 
     return (

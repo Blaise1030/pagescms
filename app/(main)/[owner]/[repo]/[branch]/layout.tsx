@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
-import { headers } from "next/headers";
+import { headers, cookies } from "next/headers";
 import { getConfig } from "@/lib/config-store";
 import { ConfigProvider } from "@/contexts/config-context";
 import type { ConfigState } from "@/contexts/config-context";
@@ -29,6 +29,10 @@ export default async function Layout({
   if (!user) return redirect(signInUrl);
 
   const decodedBranch = decodeURIComponent(branch);
+
+  const cookieStore = await cookies();
+  const sidebarWidthCookie = cookieStore.get("sidebar_width")?.value;
+  const defaultSidebarWidth = sidebarWidthCookie ? Math.min(480, Math.max(200, parseInt(sidebarWidthCookie, 10))) : undefined;
 
   // Start the fetch immediately — don't await. The shell renders now;
   // config-dependent parts (sidebar nav, content) stream in when it resolves.
@@ -59,7 +63,7 @@ export default async function Layout({
       <Suspense
         fallback={<AppLoadingShell />}
       >
-        <RepoLayout>
+        <RepoLayout defaultSidebarWidth={defaultSidebarWidth}>
           <ConfigGuard branch={decodedBranch}>
             {children}
           </ConfigGuard>

@@ -21,11 +21,9 @@ import {
   normalizePath,
   sortFiles,
 } from "@/lib/utils/file";
-import { viewComponents } from "@/fields/registry";
-import { getSchemaActions } from "@/lib/actions";
+import { CollectionProvider, useCollection } from "@/contexts/collection-context";
+import { getCodec } from "@/fields/registry";
 import {
-  getSchemaByName,
-  getPrimaryField,
   getFieldByPath,
   safeAccess,
 } from "@/lib/schema";
@@ -34,7 +32,6 @@ import { EmptyCreate } from "@/components/empty-create";
 import { FileOptions } from "@/components/file/file-options";
 import { CollectionTable } from "./collection-table";
 import { FolderCreate } from "@/components/folder-create";
-import { resolveContentOperations } from "@/lib/operations";
 import { useRepoHeader } from "@/components/repo/repo-header-context";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { ButtonGroup } from "@/components/ui/button-group";
@@ -69,7 +66,8 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import useSWR, { useSWRConfig } from "swr";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "@/lib/query-keys";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -171,26 +169,31 @@ const CollectionHeaderActions = memo(function CollectionHeaderActions({
 });
 
 export function Collection({ name, path }: { name: string; path?: string }) {
+  return (
+    <CollectionProvider name={name}>
+      <CollectionContent name={name} path={path} />
+    </CollectionProvider>
+  );
+}
+
+function CollectionContent({ name, path }: { name: string; path?: string }) {
   const [tableSearch, setTableSearch] = useState("");
-  const [data, setData] = useState<Record<string, any>[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const { cache, mutate } = useSWRConfig();
+  const [dataOverride, setDataOverride] = useState<Record<string, any>[] | undefined>();
+  const [errorOverride, setErrorOverride] = useState<string | null | undefined>(undefined);
+  const queryClient = useQueryClient();
 
   const searchParams = useSearchParams();
+  const searchParamsKey = searchParams.toString();
   const pathname = usePathname();
   const router = useRouter();
 
   const { config } = useConfig();
   if (!config) throw new Error(`Configuration not found.`);
 
-  const schema = useMemo(
-    () => getSchemaByName(config?.object, name),
-    [config, name],
-  );
+  const { schema, operations, actions: collectionActions, primaryField: schemaPrimaryField } = useCollection();
   if (!schema) throw new Error(`Schema not found for "${name}".`);
   if (schema.type !== "collection")
     throw new Error(`"${name}" is not a collection.`);
-  const operations = useMemo(() => resolveContentOperations({ schema }), [schema]);
   const canCreate = operations.create;
   const canRename = operations.rename;
   const canDelete = operations.delete;
@@ -245,14 +248,7 @@ export function Collection({ name, path }: { name: string; path?: string }) {
     return pathAndFieldArray;
   }, [schema]);
 
-  const primaryField = useMemo(
-    () => getPrimaryField(schema) ?? "name",
-    [schema],
-  );
-  const collectionActions = useMemo(
-    () => getSchemaActions(schema, "collection"),
-    [schema],
-  );
+  const primaryField = schemaPrimaryField ?? "name";
   const requestedFieldPaths = useMemo(() => {
     const paths = new Set<string>(["name", "path", primaryField]);
     viewFields.forEach((item: any) => paths.add(item.path));
@@ -299,50 +295,56 @@ export function Collection({ name, path }: { name: string; path?: string }) {
   const collectionPath =
     schema.view?.layout === "tree" ? schema.path : path || schema.path;
   const rootCollectionKey = useMemo(
-    () => buildCollectionApiUrl(collectionPath),
-    [buildCollectionApiUrl, collectionPath],
+    () => queryKeys.collection(config.owner, config.repo, config.branch, name, collectionPath),
+    [config.owner, config.repo, config.branch, name, collectionPath],
   );
 
-  const { data: swrCollectionData, error: swrCollectionError } = useSWR<
-    Record<string, any>[]
-  >(rootCollectionKey, fetchCollectionByUrl, {
-    revalidateOnFocus: true,
-    revalidateOnReconnect: true,
-    dedupingInterval: 2000,
-    keepPreviousData: true,
+  const { data: queryCollectionData, error: queryCollectionError, isPending: queryCollectionLoading } = useQuery({
+    queryKey: rootCollectionKey,
+    queryFn: () => fetchCollectionByUrl(buildCollectionApiUrl(collectionPath)),
+    staleTime: 30_000,
   });
 
   useEffect(() => {
-    if (!swrCollectionData) return;
-    setData(swrCollectionData);
-    setError(null);
-  }, [swrCollectionData]);
+    setDataOverride(undefined);
+    setErrorOverride(undefined);
+  }, [rootCollectionKey]);
 
-  useEffect(() => {
-    if (!swrCollectionError) return;
-    setError(
-      swrCollectionError instanceof Error
-        ? swrCollectionError.message
-        : "Fetch failed",
-    );
-  }, [swrCollectionError]);
+  const data = dataOverride ?? queryCollectionData ?? [];
+  const error =
+    errorOverride !== undefined
+      ? errorOverride
+      : queryCollectionError
+        ? queryCollectionError instanceof Error
+          ? queryCollectionError.message
+          : "Fetch failed"
+        : null;
+
+  const setData = useCallback(
+    (updater: Record<string, any>[] | ((prev: Record<string, any>[]) => Record<string, any>[])) => {
+      setDataOverride((prev) => {
+        const current = prev ?? queryCollectionData ?? [];
+        return typeof updater === "function" ? updater(current) : updater;
+      });
+    },
+    [queryCollectionData],
+  );
 
   const fetchCollectionData = useCallback(
     async (fetchPath: string): Promise<Record<string, any>[] | undefined> => {
       const apiUrl = buildCollectionApiUrl(fetchPath);
-      const cachedValue = cache.get(apiUrl) as
-        | { data?: Record<string, any>[] }
-        | undefined;
-      if (cachedValue?.data) return cachedValue.data;
+      const subKey = queryKeys.collection(config.owner, config.repo, config.branch, name, fetchPath);
+      const cached = queryClient.getQueryData<Record<string, any>[]>(subKey);
+      if (cached) return cached;
 
       try {
         const rows = await fetchCollectionByUrl(apiUrl);
-        await mutate(apiUrl, rows, { revalidate: false });
+        queryClient.setQueryData(subKey, rows);
         return rows;
       } catch (err: any) {
         console.error(`Fetch failed for path ${fetchPath}:`, err);
         if (fetchPath === (path || schema.path)) {
-          setError(err.message);
+          setErrorOverride(err.message);
         } else {
           toast.error(
             `Could not load items inside ${getFileName(fetchPath)}: ${err.message}`,
@@ -353,17 +355,20 @@ export function Collection({ name, path }: { name: string; path?: string }) {
     },
     [
       buildCollectionApiUrl,
-      cache,
+      queryClient,
       fetchCollectionByUrl,
-      mutate,
       path,
       schema.path,
+      config.owner,
+      config.repo,
+      config.branch,
+      name,
     ],
   );
 
   const handleDelete = useCallback((path: string) => {
     setData((prevData) => prevData?.filter((item: any) => item.path !== path));
-  }, []);
+  }, [setData]);
 
   const handleRename = useCallback((path: string, newPath: string) => {
     setData((prevData: any) => {
@@ -417,7 +422,7 @@ export function Collection({ name, path }: { name: string; path?: string }) {
       // For items renamed within the same folder, update the item
       return sortFiles(updateNestedData(prevData));
     });
-  }, []);
+  }, [setData]);
 
   const handleFolderCreate = useCallback((entry: any) => {
     const parentPath = getParentPath(entry.path);
@@ -433,7 +438,7 @@ export function Collection({ name, path }: { name: string; path?: string }) {
       if (!prevData) return [parent];
       return sortFiles([...prevData, parent]);
     });
-  }, []);
+  }, [setData]);
 
   const handleConfirmRenameNode = useCallback(
     (path: string, newPath: string) => {
@@ -506,7 +511,7 @@ export function Collection({ name, path }: { name: string; path?: string }) {
             },
             cell: ({ cell, row }: { cell: any; row: any }) => {
               const cellValue = cell.getValue();
-              const FieldComponent = viewComponents?.[field.type];
+              const FieldComponent = getCodec(field.type)?.ViewComponent;
               const CellView = FieldComponent ? (
                 <FieldComponent value={cellValue} field={field} />
               ) : Array.isArray(cellValue) ? (
@@ -696,11 +701,11 @@ export function Collection({ name, path }: { name: string; path?: string }) {
 
   const handleNavigate = useCallback(
     (newPath: string) => {
-      const params = new URLSearchParams(Array.from(searchParams.entries()));
-      params.set("path", newPath || schema.path);
+      const params = new URLSearchParams(searchParamsKey);
+      params.set("path", newPath || String(schema.path));
       router.push(`${pathname}?${params.toString()}`);
     },
-    [pathname, router, schema.path, searchParams],
+    [pathname, router, schema.path, searchParamsKey],
   );
 
   const handleExpand = useCallback(
@@ -728,7 +733,7 @@ export function Collection({ name, path }: { name: string; path?: string }) {
         });
       }
     },
-    [fetchCollectionData],
+    [fetchCollectionData, setData],
   );
 
   const loadingSkeleton = useMemo(
@@ -973,8 +978,7 @@ export function Collection({ name, path }: { name: string; path?: string }) {
     header: headerNode,
   });
 
-  const isLoading =
-    !swrCollectionData && !swrCollectionError && data.length === 0;
+  const isLoading = queryCollectionLoading && data.length === 0;
 
   const contentNode = isLoading ? (
     loadingSkeleton

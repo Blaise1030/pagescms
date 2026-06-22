@@ -1,7 +1,7 @@
 export const maxDuration = 30;
 
 import { type NextRequest } from "next/server";
-import { readFns } from "@/fields/registry";
+import { getCodec } from "@/fields/registry";
 import { parse } from "@/lib/serialization";
 import { deepMap, getDateFromFilename, getFieldByPath, getSchemaByName, safeAccess } from "@/lib/schema";
 import { getRepoReadContext } from "@/lib/api-repo-context";
@@ -156,8 +156,9 @@ const parseContents = (
           } else {
             // TODO: review if this works for blocks
             contentObject = deepMap(parsedObject, schema.fields, (value, field) => {
-              if (typeof field.type === "string" && readFns[field.type]) {
-                return readFns[field.type](value, field, config);
+              const read = typeof field.type === "string" ? getCodec(field.type)?.read : undefined;
+              if (read) {
+                return read(value, field, config);
               }
               return value;
             });
@@ -224,8 +225,9 @@ const pickAndTransformFields = (
     if (!field) return;
 
     let value = safeAccess(parsedObject, fieldPath);
-    if (typeof field.type === "string" && readFns[field.type]) {
-      const transformedValue = readFns[field.type](value, field, config);
+    const read = typeof field.type === "string" ? getCodec(field.type)?.read : undefined;
+    if (read) {
+      const transformedValue = read(value, field, config);
       if (transformedValue !== undefined) value = transformedValue;
     }
     setByPath(output, fieldPath, value);

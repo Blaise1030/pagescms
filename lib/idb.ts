@@ -1,8 +1,7 @@
 import { openDB, type IDBPDatabase } from "idb";
 
 const DB_NAME = "pagescms";
-const DB_VERSION = 1;
-const CACHE_STORE = "file-cache";
+const DB_VERSION = 2;
 const DRAFT_STORE = "file-drafts";
 
 let dbPromise: Promise<IDBPDatabase> | null = null;
@@ -11,7 +10,6 @@ function getDb(): Promise<IDBPDatabase> {
   if (!dbPromise) {
     dbPromise = openDB(DB_NAME, DB_VERSION, {
       upgrade(db) {
-        if (!db.objectStoreNames.contains(CACHE_STORE)) db.createObjectStore(CACHE_STORE);
         if (!db.objectStoreNames.contains(DRAFT_STORE)) db.createObjectStore(DRAFT_STORE);
       },
     });
@@ -35,8 +33,6 @@ export function idbCacheKey(owner: string, repo: string, branch: string, path: s
   return `${owner.toLowerCase()}/${repo.toLowerCase()}/${branch}/${path}`;
 }
 
-export const getFileCache = (key: string) => idbGet(CACHE_STORE, key);
-export const setFileCache = (key: string, value: Record<string, unknown>) => idbSet(CACHE_STORE, key, value);
 export const getFileDraft = (key: string) => idbGet(DRAFT_STORE, key);
 export const setFileDraft = (key: string, value: Record<string, unknown>) => idbSet(DRAFT_STORE, key, value);
 export const deleteFileDraft = (key: string) => idbDel(DRAFT_STORE, key);

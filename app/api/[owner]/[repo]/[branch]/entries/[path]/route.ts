@@ -1,15 +1,12 @@
 import { type NextRequest } from "next/server";
-import { createOctokitInstance } from "@/lib/utils/octokit";
 import { getCachedEntryContent, setCachedEntryContent } from "@/lib/github-cache-file";
-import { readFns } from "@/fields/registry";
+import { getCodec } from "@/fields/registry";
 import { deepMap, getSchemaByName } from "@/lib/schema";
 import { parse } from "@/lib/serialization";
-import { getConfig } from "@/lib/config-store";
 import { getFileExtension, normalizePath } from "@/lib/utils/file";
 import { assertGithubIdentity } from "@/lib/authz-shared";
-import { getToken } from "@/lib/token";
-import { createHttpError, toErrorResponse } from "@/lib/api-error";
-import { requireApiUserSession } from "@/lib/session-server";
+import { createHttpError } from "@/lib/api-error";
+import { withRepoContext } from "@/lib/api-repo-context";
 import { decodeBase64Utf8 } from "@/lib/encoding";
 
 /**
@@ -26,16 +23,14 @@ export async function GET(
   request: NextRequest,
   context: { params: Promise<{ owner: string, repo: string, branch: string, path: string }> }
 ) {
-  try {
-    const params = await context.params;
-    const sessionResult = await requireApiUserSession();
-    if ("response" in sessionResult) return sessionResult.response;
-    const user = sessionResult.user;
+  const params = await context.params;
 
-    const { token } = await getToken(user, params.owner, params.repo);
-    if (!token) throw createHttpError("Token not found", 401);
+  return withRepoContext(
+    { owner: params.owner, repo: params.repo, branch: params.branch },
+    async (req, ctx) => {
+      const { user, token, config: repoConfig, octokit } = ctx;
 
-    const searchParams = request.nextUrl.searchParams;
+    const searchParams = req.nextUrl.searchParams;
     const name = searchParams.get("name");
     const metaOnly =
       searchParams.get("meta") === "true" ||
@@ -51,15 +46,12 @@ export async function GET(
     }
 
     if (!name && normalizedPath === ".pages.yml" && metaOnly) {
-      const cachedConfig = await getConfig(params.owner, params.repo, params.branch, {
-        getToken: async () => token,
-      });
       return Response.json({
         status: "success",
         data: {
-          sha: cachedConfig?.sha ?? null,
-          version: cachedConfig?.version ?? null,
-          lastCheckedAt: cachedConfig?.lastCheckedAt ?? null,
+          sha: repoConfig?.sha ?? null,
+          version: repoConfig?.version ?? null,
+          lastCheckedAt: repoConfig?.lastCheckedAt ?? null,
         },
       });
     }
@@ -68,9 +60,7 @@ export async function GET(
     let schema;
 
     if (name) {
-      config = await getConfig(params.owner, params.repo, params.branch, {
-        getToken: async () => token,
-      });
+      config = repoConfig;
       if (!config) throw createHttpError(`Configuration not found for ${params.owner}/${params.repo}/${params.branch}.`, 404);
 
       schema = getSchemaByName(config.object, name);
@@ -109,7 +99,6 @@ export async function GET(
       }
     }
 
-    const octokit = createOctokitInstance(token);
     let response;
     try {
       response = await octokit.rest.repos.getContent({
@@ -158,10 +147,9 @@ export async function GET(
         contentObject,
       },
     });
-  } catch (error: any) {
-    console.error(error);
-    return toErrorResponse(error);
-  }
+    },
+    request,
+  );
 }
 
 // Parse the entry into an object based on the content schema.
@@ -197,8 +185,9 @@ const parseContent = (
         entryFields,
         (value, field) => {
           const type = field.type;
-          if (typeof type === 'string' && readFns[type]) {
-            return readFns[type](value, field, config);
+          const read = typeof type === 'string' ? getCodec(type)?.read : undefined;
+          if (read) {
+            return read(value, field, config);
           }
           return value;
         }

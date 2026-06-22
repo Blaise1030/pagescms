@@ -8,14 +8,7 @@ import { useConfig } from "@/contexts/config-context";
 import { parseAndValidateConfig } from "@/lib/config";
 import { resolveContentOperations } from "@/lib/operations";
 import { requireApiSuccess } from "@/lib/api-client";
-import {
-  idbCacheKey,
-  getFileCache,
-  setFileCache,
-  getFileDraft,
-  setFileDraft,
-  deleteFileDraft,
-} from "@/lib/idb";
+import { useEntryStore } from "@/hooks/use-entry-store";
 import { getSchemaActions } from "@/lib/actions";
 import {
   generateFilename,
@@ -78,7 +71,8 @@ import {
 import { Skeleton } from "@/components/ui/skeleton"
 import { toast } from "sonner";
 import { ArrowLeft, EllipsisVertical, Lock, LockOpen, Save } from "lucide-react";
-import useSWR, { useSWRConfig } from "swr";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "@/lib/query-keys";
 import { useSidebarOptional } from "@/components/ui/sidebar";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle, usePanelRef } from "@/components/ui/resizable";
 import { getPreviewUrl } from "@/lib/preview";
@@ -142,9 +136,6 @@ export function Entry({
   const [path, setPath] = useState<string | undefined>(initialPath);
   const [entry, setEntry] = useState<EntryData | null>();
   const [sha, setSha] = useState<string | undefined>();
-  useEffect(() => {
-    shaRef.current = sha;
-  }, [sha]);
   const [displayTitle, setDisplayTitle] = useState<string>(() => {
     if (title) return title;
     if (initialPath && initialPath !== ".pages.yml") {
@@ -154,19 +145,14 @@ export function Entry({
   });
   const [isLoading, setIsLoading] = useState(path ? true : false);
   const [isSaving, setIsSaving] = useState(false);
-  const [saveStatus, setSaveStatus] = useState<SaveStatusValue>("idle");
-  const shaRef = useRef<string | undefined>(undefined);
-  const inFlightRef = useRef(false);
-  const pendingFlushRef = useRef<Record<string, unknown> | null>(null);
   const [draftContent, setDraftContent] = useState<Record<string, unknown> | null>(null);
   const [showDraftBanner, setShowDraftBanner] = useState(false);
   const [isFormDirty, setIsFormDirty] = useState(false);
   const [hasRegisteredChanges, setHasRegisteredChanges] = useState(false);
   const [activeTab, setActiveTab] = useState<"content" | "history">("content");
-  const historyEverActivated = useRef(false);
   const [error, setError] = useState<string | undefined | null>(null);
   const changeVersionRef = useRef(0);
-  const { mutate } = useSWRConfig();
+  const queryClient = useQueryClient();
 
   const router = useRouter();
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
@@ -186,6 +172,27 @@ export function Entry({
     return getSchemaByName(config?.object, name)
   }, [config, name]);
   const schemaType = schema?.type;
+
+  const {
+    entry: storeEntry,
+    hasDraft: storeHasDraft,
+    isSaving: storeIsSaving,
+    isLoading: storeIsLoading,
+    error: storeError,
+    save: storeSave,
+    saveDraft,
+    discard: storeDiscard,
+    mutateEntry,
+  } = useEntryStore(path, {
+    config,
+    name,
+    schema,
+    schemaType,
+    onSave,
+  });
+
+  const saveStatus: SaveStatusValue = storeIsSaving ? "saving" : storeError ? "error" : "saved";
+
   const previewUrl = getPreviewUrl(
     config?.object?.siteUrl as string | undefined,
     schema?.previewPath as string | undefined,
@@ -278,45 +285,10 @@ export function Entry({
     setIsFilenameUnlocked(true);
   }, [entryContentObject, path, schema, schemaType, showFilenameField]);
 
-  const entryApiUrl = useMemo(() => (
-    path
-      ? `/api/${config.owner}/${config.repo}/${encodeURIComponent(config.branch)}/entries/${encodeURIComponent(path)}?name=${encodeURIComponent(name)}`
-      : null
-  ), [config.branch, config.owner, config.repo, name, path]);
-
-  const fetchEntryByUrl = useCallback(async (apiUrl: string): Promise<EntryData> => {
-    const response = await fetch(apiUrl);
-    const data = await requireApiSuccess<any>(
-      response,
-      "Failed to fetch entry",
-    );
-    return data.data as EntryData;
-  }, []);
-
-  const {
-    data: swrEntryData,
-    error: swrEntryError,
-    isLoading: swrEntryLoading,
-    mutate: mutateEntry,
-  } = useSWR<EntryData>(
-    entryApiUrl,
-    fetchEntryByUrl,
-    {
-      revalidateOnFocus: true,
-      revalidateOnReconnect: true,
-      dedupingInterval: 2000,
-    },
-  );
-
   useEffect(() => {
-    if (!path) return;
-    setIsLoading(swrEntryLoading);
-  }, [path, swrEntryLoading]);
-
-  useEffect(() => {
-    if (!swrEntryData || !path) return;
-    setEntry(swrEntryData);
-    setSha(swrEntryData.sha);
+    if (!storeEntry || !path) return;
+    setEntry(storeEntry);
+    setSha(storeEntry.sha);
     setHasRegisteredChanges(false);
     setIsLoading(false);
     setError(null);
@@ -324,7 +296,7 @@ export function Entry({
     if (initialPath && schema && schema.type === "collection") {
       const primaryField = getPrimaryField(schema);
       const primaryValue = primaryField
-        ? safeAccess(swrEntryData.contentObject ?? {}, primaryField)
+        ? safeAccess(storeEntry.contentObject ?? {}, primaryField)
         : undefined;
       const hasPrimaryValue = typeof primaryValue === "string"
         ? primaryValue !== ""
@@ -336,100 +308,49 @@ export function Entry({
     } else if (!title && path && path !== ".pages.yml") {
       setDisplayTitle(`Editing "${getFileName(normalizePath(path))}"`);
     }
-    if (path && config && swrEntryData.contentObject) {
-      const key = idbCacheKey(config.owner, config.repo, config.branch, path);
-      void setFileCache(key, swrEntryData.contentObject as Record<string, unknown>);
-
-      void (async () => {
-        const draft = await getFileDraft(key);
-        if (
-          draft &&
-          draftMatchesContent(
-            entryFields,
-            draft,
-            swrEntryData.contentObject,
-            schema?.list === true,
-          )
-        ) {
-          await deleteFileDraft(key);
-          setShowDraftBanner(false);
-          setDraftContent(null);
-        }
-      })();
-    }
-  }, [config, entryFields, initialPath, path, schema, swrEntryData, title]);
+  }, [initialPath, path, schema, storeEntry, title]);
 
   useEffect(() => {
-    if (!path || !config) return;
-    const key = idbCacheKey(config.owner, config.repo, config.branch, path);
-
-    (async () => {
-      const draft = await getFileDraft(key);
-      if (draft) {
-        const cached = await getFileCache(key);
-        const listSchema = schema?.list === true;
-        if (
-          cached &&
-          draftMatchesContent(entryFields, draft, cached, listSchema)
-        ) {
-          await deleteFileDraft(key);
-        } else {
-          setDraftContent(draft);
-          setShowDraftBanner(true);
-        }
-        setIsLoading(false);
-        return;
-      }
-      const cached = await getFileCache(key);
-      if (cached && !entry) {
-        setEntry({
-          path,
-          sha: "",
-          contentObject: cached,
-        });
-        setIsLoading(false);
-      }
-    })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    setIsLoading(storeIsLoading);
+  }, [storeIsLoading]);
 
   useEffect(() => {
-    if (!swrEntryError) return;
-    const message = swrEntryError instanceof Error ? swrEntryError.message : "Failed to fetch entry.";
-    setError(message);
+    if (!storeError) return;
+    setError(storeError.message);
     setIsLoading(false);
-  }, [swrEntryError]);
+  }, [storeError]);
+
+  useEffect(() => {
+    if (storeHasDraft) {
+      setShowDraftBanner(true);
+    }
+  }, [storeHasDraft]);
 
   const historyApiUrl = useMemo(() => (
     path
       ? `/api/${config.owner}/${config.repo}/${encodeURIComponent(config.branch)}/entries/${encodeURIComponent(path)}/history?name=${encodeURIComponent(name)}`
       : null
-  ), [config.branch, config.owner, config.repo, name, path]);
+  ), [config.owner, config.repo, config.branch, path, name]);
 
-  const historyKey = useMemo(
-    () => (historyApiUrl && historyEverActivated.current) ? [historyApiUrl, sha ?? ""] as const : null,
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [historyApiUrl, sha, activeTab],
-  );
+  const historyEnabled = activeTab === "history" && !!path && !!historyApiUrl;
 
-  const fetchEntryHistory = useCallback(async ([apiUrl]: readonly [string, string]): Promise<EntryHistoryItem[]> => {
-    const response = await fetch(apiUrl);
-    const data = await requireApiSuccess<any>(
-      response,
-      "Failed to fetch entry's history",
-    );
-    return data.data as EntryHistoryItem[];
-  }, []);
-
-  const { data: historyData } = useSWR<EntryHistoryItem[]>(
-    historyKey,
-    fetchEntryHistory,
-    {
-      revalidateOnFocus: true,
-      revalidateOnReconnect: true,
-      dedupingInterval: 2000,
+  const { data: historyData } = useQuery<EntryHistoryItem[]>({
+    queryKey: historyEnabled
+      ? [...queryKeys.entryHistory(config.owner, config.repo, config.branch, path!, name), sha ?? '']
+      : ['entryHistory-disabled'],
+    queryFn: async () => {
+      const response = await fetch(historyApiUrl!);
+      const data = await requireApiSuccess<any>(
+        response,
+        "Failed to fetch entry's history",
+      );
+      return data.data as EntryHistoryItem[];
     },
-  );
+    enabled: historyEnabled,
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
+    staleTime: 30_000,
+  });
 
   const currentFilename = useMemo(
     () => path ? getFileName(normalizePath(path)) : "",
@@ -441,58 +362,11 @@ export function Entry({
 
   const executeSave = useCallback(
     async (contentObject: Record<string, unknown>, savePath: string) => {
-      inFlightRef.current = true;
-      setSaveStatus("saving");
-
       try {
-        const response = await fetch(
-          `/api/${config.owner}/${config.repo}/${encodeURIComponent(config.branch)}/files/${encodeURIComponent(savePath)}`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              type: savePath === ".pages.yml" ? "settings" : "content",
-              name,
-              content: schema?.list === true ? contentObject.listWrapper : contentObject,
-              sha: shaRef.current,
-            }),
-          }
-        );
-        const data = await requireApiSuccess<any>(response, "Failed to save file");
-
-        if (data.data.sha !== shaRef.current) {
-          // eslint-disable-next-line react-hooks/immutability
-          shaRef.current = data.data.sha;
-          setSha(data.data.sha);
-        }
-
-        if (path) {
-          const key = idbCacheKey(config.owner, config.repo, config.branch, path);
-          void deleteFileDraft(key);
-          void setFileCache(key, contentObject);
-        }
-
+        const result = await storeSave(contentObject, savePath);
+        if (result.sha) setSha(result.sha);
         setHasRegisteredChanges(false);
-        setSaveStatus("saved");
-
-        if (schemaType === "collection") {
-          const collectionKeyPrefix = `/api/${config.owner}/${config.repo}/${encodeURIComponent(config.branch)}/collections/${encodeURIComponent(name)}?`;
-          void mutate((key) => typeof key === "string" && key.startsWith(collectionKeyPrefix));
-        }
-
-        if (onSave) onSave(data.data);
-
-        const pending = pendingFlushRef.current;
-        pendingFlushRef.current = null;
-        if (pending) {
-          // eslint-disable-next-line react-hooks/immutability
-          await executeSave(pending, savePath);
-        } else {
-          inFlightRef.current = false;
-        }
       } catch (error: unknown) {
-        inFlightRef.current = false;
-        setSaveStatus("error");
         const message =
           error instanceof Error ? error.message : "Failed to save file.";
         toast.error(message, {
@@ -504,7 +378,7 @@ export function Entry({
         });
       }
     },
-    [config, name, path, schema, schemaType, onSave, mutate, setHasRegisteredChanges]
+    [setHasRegisteredChanges, storeSave],
   );
 
   const onSubmit = async (contentObject: Record<string, unknown>) => {
@@ -545,8 +419,9 @@ export function Entry({
             router.push(
               `/${config.owner}/${config.repo}/${encodeURIComponent(config.branch)}/collection/${encodeURIComponent(name)}/edit/${encodeURIComponent(data.data.path)}`
             );
-            const collectionKeyPrefix = `/api/${config.owner}/${config.repo}/${encodeURIComponent(config.branch)}/collections/${encodeURIComponent(name)}?`;
-            void mutate((key) => typeof key === "string" && key.startsWith(collectionKeyPrefix));
+            void queryClient.invalidateQueries({
+              queryKey: queryKeys.collectionAll(config.owner, config.repo, config.branch, name),
+            });
           }
           resolve(data);
         } catch (error) {
@@ -605,19 +480,15 @@ export function Entry({
       router.replace(
         `/${config.owner}/${config.repo}/${encodeURIComponent(config.branch)}/collection/${encodeURIComponent(name)}/edit/${encodeURIComponent(newPath)}`
       );
-      const collectionKeyPrefix = `/api/${config.owner}/${config.repo}/${encodeURIComponent(config.branch)}/collections/${encodeURIComponent(name)}?`;
-      void mutate((key) => typeof key === "string" && key.startsWith(collectionKeyPrefix));
-    }
-
-    if (inFlightRef.current) {
-      pendingFlushRef.current = contentObject;
-      return;
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.collectionAll(config.owner, config.repo, config.branch, name),
+      });
     }
 
     void executeSave(contentObject, savePath);
   };
 
-  const isBusy = isLoading || isSaving;
+  const isBusy = isLoading || isSaving || storeIsSaving;
 
   useEffect(() => {
     const handleSaveShortcut = (event: KeyboardEvent) => {
@@ -666,33 +537,52 @@ export function Entry({
     return () => window.removeEventListener("message", handleReady);
   }, [previewUrl]);
 
+  const handleValuesChange = useCallback((values: Record<string, unknown>) => {
+    previewFormValuesRef.current = values;
+    setPreviewFormValues(values);
+  }, []);
+
+  const handleDraftChange = useCallback(async (content: Record<string, unknown>) => {
+    if (
+      draftMatchesContent(
+        entryFields,
+        content,
+        entry?.contentObject,
+        schema?.list === true,
+      )
+    ) {
+      await storeDiscard();
+    } else {
+      saveDraft(content);
+      setDraftContent(content);
+      setShowDraftBanner(true);
+    }
+  }, [entryFields, entry?.contentObject, schema?.list, storeDiscard, saveDraft]);
+
   const handleDelete = useCallback((path: string) => {
     // TODO: disable save button or freeze form while deleting?
     if (schemaType === "collection") {
-      const collectionKeyPrefix = `/api/${config.owner}/${config.repo}/${encodeURIComponent(config.branch)}/collections/${encodeURIComponent(name)}?`;
-      void mutate((key) => typeof key === "string" && key.startsWith(collectionKeyPrefix));
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.collectionAll(config.owner, config.repo, config.branch, name),
+      });
     }
     if (schemaType === "collection") {
       router.push(`/${config.owner}/${config.repo}/${encodeURIComponent(config.branch)}/collection/${encodeURIComponent(name)}`);
     } else {
-      if (entryApiUrl) {
-        void mutate(entryApiUrl, undefined, { revalidate: true });
-      }
       void mutateEntry();
     }
-  }, [config.branch, config.owner, config.repo, entryApiUrl, mutate, mutateEntry, name, router, schemaType]);
+  }, [config.branch, config.owner, config.repo, queryClient, mutateEntry, name, router, schemaType]);
 
   const handleRename = useCallback((oldPath: string, newPath: string) => {
     if (schemaType === "collection") {
-      const collectionKeyPrefix = `/api/${config.owner}/${config.repo}/${encodeURIComponent(config.branch)}/collections/${encodeURIComponent(name)}?`;
-      void mutate((key) => typeof key === "string" && key.startsWith(collectionKeyPrefix));
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.collectionAll(config.owner, config.repo, config.branch, name),
+      });
     }
-    if (entryApiUrl) {
-      void mutate(entryApiUrl, undefined, { revalidate: false });
-    }
+    void mutateEntry();
     setPath(newPath);
     router.replace(`/${config.owner}/${config.repo}/${encodeURIComponent(config.branch)}/collection/${encodeURIComponent(name)}/edit/${encodeURIComponent(newPath)}`);
-  }, [config.branch, config.owner, config.repo, entryApiUrl, mutate, name, router, schemaType]);
+  }, [config.branch, config.owner, config.repo, queryClient, mutateEntry, name, router, schemaType]);
 
   const breadcrumbNode = useMemo(() => {
     if (!schema) {
@@ -1056,7 +946,6 @@ export function Entry({
   }
   
   const handleTabChange = (tab: "content" | "history") => {
-    if (tab === "history") historyEverActivated.current = true;
     setActiveTab(tab);
   };
 
@@ -1097,10 +986,7 @@ export function Entry({
                 setShowDraftBanner(false);
               }}
               onDiscard={async () => {
-                if (path && config) {
-                  const key = idbCacheKey(config.owner, config.repo, config.branch, path);
-                  await deleteFileDraft(key);
-                }
+                await storeDiscard();
                 setDraftContent(null);
                 setShowDraftBanner(false);
               }}
@@ -1150,25 +1036,8 @@ export function Entry({
               changeVersionRef.current += 1;
               setHasRegisteredChanges(true);
             }}
-            onDraftChange={path ? async (content) => {
-              const key = idbCacheKey(config.owner, config.repo, config.branch, path);
-              if (
-                draftMatchesContent(
-                  entryFields,
-                  content,
-                  entry?.contentObject,
-                  schema?.list === true,
-                )
-              ) {
-                await deleteFileDraft(key);
-              } else {
-                await setFileDraft(key, content);
-              }
-            } : undefined}
-            onValuesChange={previewUrl ? (values) => {
-              previewFormValuesRef.current = values;
-              setPreviewFormValues(values);
-            } : undefined}
+            onDraftChange={path ? handleDraftChange : undefined}
+            onValuesChange={previewUrl ? handleValuesChange : undefined}
           />
         </>
       )}

@@ -2,7 +2,7 @@ export const maxDuration = 30;
 
 import { type NextRequest } from "next/server";
 import { parse } from "@/lib/serialization";
-import { readFns } from "@/fields/registry";
+import { getCodec } from "@/fields/registry";
 import {
   getDateFromFilename,
   getFieldByPath,
@@ -216,8 +216,9 @@ const pickAndTransformFields = (
     if (!field) return;
 
     let value = safeAccess(parsedObject, normalizedFieldPath);
-    if (typeof field.type === "string" && readFns[field.type]) {
-      const transformedValue = readFns[field.type](value, field, config);
+    const read = typeof field.type === "string" ? getCodec(field.type)?.read : undefined;
+    if (read) {
+      const transformedValue = read(value, field, config);
       if (transformedValue !== undefined) value = transformedValue;
     }
 

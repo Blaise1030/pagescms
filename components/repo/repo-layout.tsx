@@ -29,9 +29,9 @@ function RepoHeader() {
   );
 }
 
-export function RepoLayout({ children }: { children: React.ReactNode }) {
+export function RepoLayout({ children, defaultSidebarWidth }: { children: React.ReactNode; defaultSidebarWidth?: number }) {
   return (
-    <SidebarProvider className="overflow-hidden">
+    <SidebarProvider className="overflow-hidden" defaultWidth={defaultSidebarWidth}>
       <RepoHeaderProvider>
         <RepoSidebar />
         <SidebarInset className="overflow-hidden">

@@ -1,7 +1,7 @@
 import { type NextRequest } from "next/server";
 import { createOctokitInstance } from "@/lib/utils/octokit";
 import { isContentOperationAllowed } from "@/lib/operations";
-import { writeFns } from "@/fields/registry";
+import { getCodec } from "@/fields/registry";
 import { configVersion, parseConfig, normalizeConfig } from "@/lib/config";
 import { stringify, parse } from "@/lib/serialization";
 import { deepMap, generateZodSchema, getSchemaByName, sanitizeObject } from "@/lib/schema";
@@ -113,7 +113,8 @@ export async function POST(
               contentFields,
               (value, field) => {
                 const fieldType = field.type as string;
-                return writeFns[fieldType] ? writeFns[fieldType](value, field, config || {}) : value;
+                const write = getCodec(fieldType)?.write;
+                return write ? write(value, field, config || {}) : value;
               }
             );
 

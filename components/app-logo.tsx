@@ -18,7 +18,7 @@ export function AppLogo({
       xmlns="http://www.w3.org/2000/svg"
       aria-hidden="true"
     >
-      <rect width="24" height="24" rx="4.8" className="fill-foreground" />
+      <rect width="24" height="24" rx="4.8" className="fill-muted" />
       <path d={LOGO_PATH} className="fill-background" />
     </svg>
   );
