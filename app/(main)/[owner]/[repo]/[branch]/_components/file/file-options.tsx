@@ -1,10 +1,12 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useConfig } from "@/app/(main)/[owner]/[repo]/[branch]/_contexts/config-context";
 import { getParentPath, getRelativePath, joinPathSegments, normalizePath } from "@/lib/utils/file";
 import { getSchemaByName } from "@/lib/schema";
 import { requireApiSuccess } from "@/lib/api-client";
+import { queryKeys } from "@/lib/query-keys";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -72,32 +74,39 @@ export function FileOptions({
   const [newPath, setNewPath] = useState(relativePath);
   const [isRenameOpen, setIsRenameOpen] = useState(false);
 
+  const queryClient = useQueryClient();
+
+  const deleteMutation = useMutation({
+    mutationFn: async () => {
+      const params = new URLSearchParams({
+        sha,
+        type: (type === "collection" || type === "file") ? "content" : type
+      });
+      if (name) params.set("name", name);
+
+      const response = await fetch(
+        `/api/${config.owner}/${config.repo}/${encodeURIComponent(config.branch)}/files/${encodeURIComponent(normalizedPath)}?${params.toString()}`,
+        { method: "DELETE" },
+      );
+      return requireApiSuccess<{ message?: string }>(response, "Failed to delete file");
+    },
+    onSuccess: () => {
+      if (type === "media" && name) {
+        void queryClient.invalidateQueries({ queryKey: queryKeys.mediaAll(config.owner, config.repo, config.branch, name) });
+      } else if ((type === "collection" || type === "file") && name) {
+        void queryClient.invalidateQueries({ queryKey: queryKeys.collectionAll(config.owner, config.repo, config.branch, name) });
+      }
+      if (onDelete) onDelete(path);
+    },
+  });
+
   const handleConfirmDelete = async () => {
     try {
-      const deletePromise = new Promise(async (resolve, reject) => {
-        try {
-          const params = new URLSearchParams({ 
-            sha,
-            type: (type === "collection" || type === "file") ? "content" : type
-          });
-          if (name) params.set("name", name);
-
-          const response = await fetch(`/api/${config.owner}/${config.repo}/${encodeURIComponent(config.branch)}/files/${encodeURIComponent(normalizedPath)}?${params.toString()}`, {
-            method: "DELETE",
-          });
-
-          const data = await requireApiSuccess<any>(response, "Failed to delete file");
-
-          resolve(data);
-        } catch (error) {
-          reject(error);
-        }
-      });
+      const deletePromise = deleteMutation.mutateAsync();
 
       toast.promise(deletePromise, {
         loading: `Deleting ${path}`,
         success: (data: any) => {
-          if (onDelete) onDelete(path);
           return data.message;
         },
         error: (error: any) => error.message,
