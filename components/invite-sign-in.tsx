@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Loader } from "lucide-react";
 import { toast } from "sonner";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { queryKeys } from "@/lib/query-keys";
 import { authClient } from "@/lib/auth-client";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { OtpVerificationForm } from "@/components/otp-verification-form";
@@ -28,31 +30,28 @@ type InviteState =
     };
 
 export function InviteSignIn({ token }: { token: string }) {
-  const [state, setState] = useState<InviteState>({ status: "loading" });
+  const { data: state = { status: "loading" } } = useQuery<InviteState>({
+    queryKey: queryKeys.collaboratorInvite(token),
+    queryFn: async () => {
+      const response = await fetch(`/api/collaborator-invites/${encodeURIComponent(token)}`);
+      return response.json() as Promise<InviteState>;
+    },
+    retry: false,
+    staleTime: Infinity,
+  });
+
+  const claimMutation = useMutation({
+    mutationFn: async () => {
+      const response = await fetch(`/api/collaborator-invites/${encodeURIComponent(token)}`, {
+        method: "POST",
+      });
+      return response.json() as Promise<InviteState>;
+    },
+  });
+
   const [otp, setOtp] = useState("");
   const [pending, setPending] = useState<null | "send" | "verify" | "sign-out">(null);
   const sentOtpForInviteRef = useRef<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function loadInvite() {
-      setState({ status: "loading" });
-      try {
-        const response = await fetch(`/api/collaborator-invites/${encodeURIComponent(token)}`);
-        const next = (await response.json()) as InviteState;
-        if (!cancelled) setState(next);
-      } catch {
-        if (!cancelled) setState({ status: "unavailable" });
-      }
-    }
-
-    void loadInvite();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [token]);
 
   useEffect(() => {
     if (state.status === "ready") {
@@ -107,17 +106,16 @@ export function InviteSignIn({ token }: { token: string }) {
         return;
       }
 
-      const claimResponse = await fetch(`/api/collaborator-invites/${encodeURIComponent(token)}`, {
-        method: "POST",
-      });
-      const claim = (await claimResponse.json()) as InviteState;
+      const claim = await claimMutation.mutateAsync();
       if (claim.status === "ready") {
         window.location.assign(claim.destinationPath);
         return;
       }
 
-      if (claimResponse.status === 404 && claim.status === "unavailable") {
-        window.location.assign(state.destinationPath);
+      if (claim.status === "unavailable") {
+        if (state.status === "otp_required") {
+          window.location.assign(state.destinationPath);
+        }
         return;
       }
 
