@@ -3,9 +3,8 @@ import { configTable } from "@/db/schema";
 import { and, eq, sql } from "drizzle-orm";
 import { configVersion, normalizeConfig, parseConfig } from "@/lib/config";
 import { saveConfig, updateConfig } from "@/lib/config-store";
-import { clearFileCache, updateMultipleFilesCache } from "@/lib/github-cache-file";
+import { ContentCache } from "@/lib/content-cache";
 import { deleteCacheFileMeta, upsertCacheFileMeta } from "@/lib/github-cache-meta";
-import { clearScopedFileCache } from "@/lib/github-webhook-installation";
 import { getInstallationToken } from "@/lib/token";
 import { normalizePath } from "@/lib/utils/file";
 import { createOctokitInstance } from "@/lib/utils/octokit";
@@ -98,8 +97,7 @@ const handlePushWebhookEvent = async (event: string | null, data: any) => {
       threshold: WEBHOOK_PUSH_SCOPED_INVALIDATION_MAX_FILES,
     });
 
-    await clearFileCache(pushOwner, pushRepo, pushBranch);
-    await deleteCacheFileMeta(pushOwner, pushRepo, pushBranch);
+    await ContentCache.invalidateBranch(pushOwner, pushRepo, pushBranch);
     await upsertCacheFileMeta(pushOwner, pushRepo, pushBranch, {
       commitSha: commit.sha,
       status: "ok",
@@ -121,7 +119,7 @@ const handlePushWebhookEvent = async (event: string | null, data: any) => {
       threshold: WEBHOOK_PUSH_INCREMENTAL_MAX_FILES,
     });
 
-    await clearScopedFileCache(pushOwner, pushRepo, pushBranch, uniqueChangedPaths);
+    await ContentCache.invalidateScoped(pushOwner, pushRepo, pushBranch, uniqueChangedPaths);
     await deleteCacheFileMeta(pushOwner, pushRepo, pushBranch);
     await upsertCacheFileMeta(pushOwner, pushRepo, pushBranch, {
       commitSha: commit.sha,
@@ -137,20 +135,21 @@ const handlePushWebhookEvent = async (event: string | null, data: any) => {
 
   const installationToken = await getInstallationToken(pushOwner, pushRepo);
 
-  await updateMultipleFilesCache(
+  await ContentCache.invalidateByWebhook(
     pushOwner,
     pushRepo,
     pushBranch,
-    removedFiles,
-    modifiedFiles,
-    addedFiles,
-    installationToken,
-    commit.sha
-      ? {
-        sha: commit.sha,
-        timestamp: commit.timestamp,
-      }
-      : undefined,
+    {
+      added: Array.from(addedPathSet),
+      modified: Array.from(modifiedPathSet),
+      removed: Array.from(removedPathSet),
+    },
+    {
+      token: installationToken,
+      commit: commit.sha
+        ? { sha: commit.sha, timestamp: commit.timestamp }
+        : undefined,
+    },
   );
 
   await upsertCacheFileMeta(pushOwner, pushRepo, pushBranch, {

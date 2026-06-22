@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
-import { SignIn } from "@/components/sign-in";
+import { SignIn } from "@/app/(auth)/_components/sign-in";
 import { getSafeRedirect } from "@/lib/auth-redirect";
 
 export default async function Page({

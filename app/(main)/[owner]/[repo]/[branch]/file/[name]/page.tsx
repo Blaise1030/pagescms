@@ -1,8 +1,8 @@
 "use client";
 
 import { use, useMemo } from "react";
-import { useConfig } from "@/contexts/config-context";
-import { Entry } from "@/components/entry/entry";
+import { useConfig } from "@/app/(main)/[owner]/[repo]/[branch]/_contexts/config-context";
+import { Entry } from "@/app/(main)/[owner]/[repo]/[branch]/_components/entry/entry";
 import { DocumentTitle, formatRepoBranchTitle } from "@/components/document-title";
 import { getSchemaByName } from "@/lib/schema";
 

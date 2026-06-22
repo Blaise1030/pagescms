@@ -1,12 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { Entry } from "@/components/entry/entry";
+import { Entry } from "@/app/(main)/[owner]/[repo]/[branch]/_components/entry/entry";
 import {
   DocumentTitle,
   formatRepoBranchTitle,
 } from "@/components/document-title";
-import { useConfig } from "@/contexts/config-context";
+import { useConfig } from "@/app/(main)/[owner]/[repo]/[branch]/_contexts/config-context";
 import { useUser } from "@/contexts/user-context";
 import { hasGithubIdentity } from "@/lib/authz-shared";
 import { Button } from "@/components/ui/button";

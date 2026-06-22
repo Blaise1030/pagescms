@@ -1,5 +1,5 @@
-import { SettingsLayout } from "@/components/settings/settings-layout";
-import { Preferences } from "@/components/settings/preferences";
+import { SettingsLayout } from "@/app/(main)/settings/_components/settings-layout";
+import { Preferences } from "@/app/(main)/settings/_components/preferences";
 import { DocumentTitle } from "@/components/document-title";
 
 export default function Page() {

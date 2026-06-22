@@ -1,9 +1,10 @@
-import { createHttpError } from "@/lib/api-error";
+import { createHttpError, toErrorResponse } from "@/lib/api-error";
 import { getConfig } from "@/lib/config-store";
 import { getGithubId } from "@/lib/github-account";
 import { checkRepoAccess } from "@/lib/github-cache-permissions";
 import { requireApiUserSession } from "@/lib/session-server";
 import { getToken } from "@/lib/token";
+import { createOctokitInstance } from "@/lib/utils/octokit";
 import type { Config } from "@/types/config";
 import type { User } from "@/types/user";
 
@@ -48,4 +49,28 @@ const getRepoReadContext = async ({ owner, repo, branch }: RepoRef): Promise<Rep
   return { user, token, config };
 };
 
-export { getRepoReadContext };
+type RepoContext = {
+  user: User;
+  token: string;
+  config: Config;
+  octokit: ReturnType<typeof createOctokitInstance>;
+};
+
+type ContextHandler = (req: Request, ctx: RepoContext) => Promise<Response>;
+
+const withRepoContext = async (
+  params: RepoRef,
+  handler: ContextHandler,
+  req: Request = new Request(""),
+): Promise<Response> => {
+  try {
+    const { user, token, config } = await getRepoReadContext(params);
+    const octokit = createOctokitInstance(token);
+    return await handler(req, { user, token, config, octokit });
+  } catch (error) {
+    return toErrorResponse(error);
+  }
+};
+
+export { getRepoReadContext, withRepoContext };
+export type { RepoContext };

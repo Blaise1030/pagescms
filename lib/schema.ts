@@ -3,7 +3,7 @@
  */
 
 import slugify from "slugify";
-import { defaultValues, schemas } from "@/fields/registry";
+import { getCodec } from "@/app/(main)/[owner]/[repo]/[branch]/_fields/registry";
 import { z } from "zod";
 import { Field } from "@/types/field";
 import { format } from "date-fns";
@@ -117,7 +117,7 @@ const getDefaultValue = (field: Record<string, any>) => {
   } else if (field.type === "block") {
     return null;
   } else {
-    const defaultValue = defaultValues?.[field.type];
+    const defaultValue = getCodec(field.type)?.defaultValue;
     return defaultValue instanceof Function
       ? defaultValue(field)
       : defaultValue !== undefined ? defaultValue : "";
@@ -194,13 +194,13 @@ const generateZodSchema = (
             ).optional().nullable();
           }
         }
-      } else if (field.type && schemas[field.type]) {
+      } else if (field.type && getCodec(field.type)?.schema) {
         // Standard registered field type (e.g. text, number, ...)
-        const fieldSchemaFn = schemas[field.type];
+        const fieldSchemaFn = getCodec(field.type)!.schema!;
         fieldSchema = fieldSchemaFn(field);
       } else {
         console.warn(`Unknown or invalid type "${field.type}" for field "${field.name}". Defaulting to text validation.`);
-        const fallbackSchema = schemas["text"];
+        const fallbackSchema = getCodec("text")?.schema;
         fieldSchema = fallbackSchema ? fallbackSchema(field) : z.string();
       }
 

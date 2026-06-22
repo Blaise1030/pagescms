@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { getRawUrl } from "@/lib/github-image";
-import { useRepo } from "@/contexts/repo-context";
-import { useConfig } from "@/contexts/config-context";
+import { useRepo } from "@/app/(main)/[owner]/[repo]/[branch]/_contexts/repo-context";
+import { useConfig } from "@/app/(main)/[owner]/[repo]/[branch]/_contexts/config-context";
 import { cn } from "@/lib/utils";
 import { Ban, ImageOff, Loader } from "lucide-react";
 

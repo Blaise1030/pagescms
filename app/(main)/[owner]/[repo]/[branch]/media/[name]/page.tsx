@@ -2,9 +2,9 @@
 
 import { use } from "react";
 import { useSearchParams } from "next/navigation";
-import { MediaView} from "@/components/media/media-view";
+import { MediaView} from "@/app/(main)/[owner]/[repo]/[branch]/_components/media/media-view";
 import { DocumentTitle, formatRepoBranchTitle } from "@/components/document-title";
-import { useConfig } from "@/contexts/config-context";
+import { useConfig } from "@/app/(main)/[owner]/[repo]/[branch]/_contexts/config-context";
 import { getSchemaByName } from "@/lib/schema";
 
 export default function Page({
@@ -23,7 +23,7 @@ export default function Page({
   const displayName = schema?.label || schema?.name || decodeURIComponent(resolvedParams.name);
   
   return (
-    <div className="max-w-screen-xl mx-auto flex-1 flex flex-col h-full px-2 py-3">
+    <div className="mx-auto flex-1 flex flex-col h-full px-2 py-3">
       <DocumentTitle
         title={formatRepoBranchTitle(displayName, config.owner, config.repo, config.branch)}
       />

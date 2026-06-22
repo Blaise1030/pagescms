@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useRepo } from "@/contexts/repo-context";
+import { useRepo } from "@/app/(main)/[owner]/[repo]/[branch]/_contexts/repo-context";
 
 export default function Page() {
   const { owner, repo, defaultBranch } = useRepo();

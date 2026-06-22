@@ -3,9 +3,9 @@
 import { use, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import { DocumentTitle, formatRepoBranchTitle } from "@/components/document-title";
-import { useConfig } from "@/contexts/config-context";
+import { useConfig } from "@/app/(main)/[owner]/[repo]/[branch]/_contexts/config-context";
 import { getSchemaByName } from "@/lib/schema";
-import { Collection } from "@/components/collection/collection";
+import { Collection } from "@/app/(main)/[owner]/[repo]/[branch]/_components/collection/collection";
 
 export default function Page({
   params
@@ -29,7 +29,7 @@ export default function Page({
   const path = searchParams.get("path") || "";
 
   return (
-    <div className="px-2 py-3">
+    <div>
       <DocumentTitle
         title={formatRepoBranchTitle(schema.label || schema.name, config.owner, config.repo, config.branch)}
       />

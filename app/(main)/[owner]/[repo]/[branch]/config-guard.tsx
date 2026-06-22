@@ -4,8 +4,8 @@ import { use, useEffect } from "react";
 import Link from "next/link";
 import { buttonVariants } from "@/components/ui/button";
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
-import { useConfigPromise } from "@/contexts/config-context";
-import { useRepo } from "@/contexts/repo-context";
+import { useConfigPromise } from "@/app/(main)/[owner]/[repo]/[branch]/_contexts/config-context";
+import { useRepo } from "@/app/(main)/[owner]/[repo]/[branch]/_contexts/repo-context";
 import { trackVisit } from "@/lib/tracker";
 
 export function ConfigGuard({

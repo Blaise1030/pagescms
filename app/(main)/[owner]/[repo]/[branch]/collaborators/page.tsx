@@ -1,8 +1,8 @@
 "use client";
 
-import { Collaborators } from "@/components/collaborators";
+import { Collaborators } from "@/app/(main)/[owner]/[repo]/[branch]/_components/collaborators";
 import { DocumentTitle, formatRepoBranchTitle } from "@/components/document-title";
-import { useConfig } from "@/contexts/config-context";
+import { useConfig } from "@/app/(main)/[owner]/[repo]/[branch]/_contexts/config-context";
 import { useUser } from "@/contexts/user-context";
 import { hasGithubIdentity } from "@/lib/authz-shared";
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
