@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "@/lib/query-keys";
 import { useRepoHeader } from "@/app/(main)/[owner]/[repo]/[branch]/_components/repo/repo-header-context";
 import { Button } from "@/components/ui/button";
 import { SubmitButton } from "@/app/(auth)/_components/submit-button";
@@ -86,7 +88,7 @@ function InviteCollaboratorsDialog({
   triggerLabel?: string;
   triggerVariant?: "default" | "outline";
   triggerSize?: "default" | "sm";
-  onInvite: (emails: string[]) => Promise<void>;
+  onInvite: (emails: string[]) => void;
   isSubmitting: boolean;
   error?: string;
 }) {
@@ -124,7 +126,7 @@ function InviteCollaboratorsDialog({
           className="space-y-4"
           onSubmit={(event) => {
             event.preventDefault();
-            void onInvite(parsedInviteEmails);
+            onInvite(parsedInviteEmails);
           }}
         >
           <input type="hidden" name="owner" value={owner} />
@@ -165,145 +167,106 @@ export function Collaborators({
   repo: string;
   branch?: string;
 }) {
-  const [collaborators, setCollaborators] = useState<Collaborator[]>([]);
   const [emails, setEmails] = useState("");
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
   const [inviteError, setInviteError] = useState<string | undefined>();
-  const [isInviting, setIsInviting] = useState(false);
   const [removing, setRemoving] = useState<number[]>([]);
   const [resending, setResending] = useState<number[]>([]);
   const [pendingRemoveId, setPendingRemoveId] = useState<number | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | undefined | null>(null);
 
-  const addNewCollaborator = useCallback((newCollaborators: Collaborator[]) => {
-    setCollaborators((prevCollaborators) => {
-      const seenIds = new Set(
-        prevCollaborators.map((collaborator) => collaborator.id),
-      );
-      const uniqueCollaborators = newCollaborators.filter(
-        (collaborator) => !seenIds.has(collaborator.id),
-      );
-      return [...prevCollaborators, ...uniqueCollaborators];
-    });
-  }, []);
+  const queryClient = useQueryClient();
 
-  useEffect(() => {
-    const controller = new AbortController();
+  const { data: collaborators = [], isLoading, error: collaboratorsError } = useQuery({
+    queryKey: queryKeys.collaborators(owner, repo),
+    queryFn: async () => {
+      const response = await fetch(`/api/collaborators/${owner}/${repo}`);
+      const data = await requireApiSuccess<{
+        status: string;
+        data: Collaborator[];
+        message?: string;
+      }>(response, "Failed to fetch collaborators");
+      return data.data;
+    },
+  });
 
-    async function fetchCollaborators() {
-      setIsLoading(true);
-      setError(null);
-      try {
-        const response = await fetch(`/api/collaborators/${owner}/${repo}`, {
-          signal: controller.signal,
-        });
-        const data = await requireApiSuccess<{
-          status: string;
-          data: Collaborator[];
-          message?: string;
-        }>(response, "Failed to fetch collaborators");
+  const error = collaboratorsError instanceof Error ? collaboratorsError.message : collaboratorsError ? "Failed to fetch collaborators" : null;
 
-        setCollaborators(data.data);
-      } catch (err: unknown) {
-        if (err instanceof DOMException && err.name === "AbortError") return;
-        console.error(err);
-        setError(
-          err instanceof Error ? err.message : "Failed to fetch collaborators",
-        );
-      } finally {
-        // In React Strict Mode, an aborted first pass can race with the active request.
-        // Keep the loading state until the non-aborted request finishes.
-        if (!controller.signal.aborted) {
-          setIsLoading(false);
-        }
-      }
-    }
-
-    fetchCollaborators();
-
-    return () => controller.abort();
-  }, [owner, repo, branch]);
-
-  const handleInviteCollaborators = useCallback(async (inviteEmails: string[]) => {
-    setIsInviting(true);
-    setInviteError(undefined);
-
-    try {
+  const inviteMutation = useMutation({
+    mutationFn: async (inviteEmails: string[]) => {
       const response = await fetch(`/api/collaborators/${owner}/${repo}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ emails: inviteEmails }),
       });
-      const data = await requireApiSuccess<AddCollaboratorState>(
-        response,
-        "Failed to invite collaborators",
-      );
-
-      if (Array.isArray(data.data) && data.data.length > 0) {
-        addNewCollaborator(data.data);
-      }
-
+      return requireApiSuccess<AddCollaboratorState>(response, "Failed to invite collaborators");
+    },
+    onSuccess: (data) => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.collaborators(owner, repo) });
       toast.success(data.message || "Collaborators invited.", { duration: 10000 });
       if (Array.isArray(data.errors) && data.errors.length > 0) {
         toast.error(data.errors.join("\n"), { duration: 10000 });
       }
       setEmails("");
       setInviteDialogOpen(false);
-    } catch (err: unknown) {
+    },
+    onError: (err: unknown) => {
       const message = err instanceof Error ? err.message : "Failed to invite collaborators";
       setInviteError(message);
       toast.error(message);
-    } finally {
-      setIsInviting(false);
-    }
-  }, [addNewCollaborator, owner, repo]);
+    },
+  });
 
-  const handleConfirmRemove = useCallback(async (collaboratorId: number) => {
-    setRemoving((prev) => [...prev, collaboratorId]);
+  const handleInviteCollaborators = (inviteEmails: string[]) => inviteMutation.mutate(inviteEmails);
+  const isInviting = inviteMutation.isPending;
 
-    try {
-      const response = await fetch(
-        `/api/collaborators/${owner}/${repo}/${collaboratorId}`,
-        { method: "DELETE" },
-      );
-      const removed = await requireApiSuccess<{ message?: string }>(
-        response,
-        "Failed to remove collaborator",
-      );
-      setCollaborators((prev) =>
-        prev.filter((collaborator) => collaborator.id !== collaboratorId),
-      );
-      toast.success(removed.message || "Collaborator removed.");
-    } catch (err: unknown) {
+  const removeMutation = useMutation({
+    mutationFn: async (collaboratorId: number) => {
+      const response = await fetch(`/api/collaborators/${owner}/${repo}/${collaboratorId}`, {
+        method: "DELETE",
+      });
+      return requireApiSuccess<{ message?: string }>(response, "Failed to remove collaborator");
+    },
+    onSuccess: (data) => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.collaborators(owner, repo) });
+      toast.success(data.message || "Collaborator removed.");
+      setPendingRemoveId(null);
+    },
+    onError: (err: unknown) => {
       const message = err instanceof Error ? err.message : "Failed to remove collaborator";
       toast.error(message);
-    } finally {
       setPendingRemoveId(null);
-      setRemoving((prev) => prev.filter((id) => id !== collaboratorId));
-    }
-  }, [owner, repo]);
+    },
+  });
 
-  const handleResendInvite = useCallback(async (collaboratorId: number) => {
-    setResending((prev) => [...prev, collaboratorId]);
+  const handleConfirmRemove = (collaboratorId: number) => {
+    setRemoving((prev) => [...prev, collaboratorId]);
+    removeMutation.mutate(collaboratorId, {
+      onSettled: () => setRemoving((prev) => prev.filter((id) => id !== collaboratorId)),
+    });
+  };
 
-    try {
-      const response = await fetch(
-        `/api/collaborators/${owner}/${repo}/${collaboratorId}/resend`,
-        { method: "POST" },
-      );
-      const resent = await requireApiSuccess<{ message?: string }>(
-        response,
-        "Failed to resend invitation",
-      );
-      toast.success(resent.message || "Invitation resent.");
-    } catch (err: unknown) {
+  const resendMutation = useMutation({
+    mutationFn: async (collaboratorId: number) => {
+      const response = await fetch(`/api/collaborators/${owner}/${repo}/${collaboratorId}/resend`, {
+        method: "POST",
+      });
+      return requireApiSuccess<{ message?: string }>(response, "Failed to resend invitation");
+    },
+    onSuccess: (data) => {
+      toast.success(data.message || "Invitation resent.");
+    },
+    onError: (err: unknown) => {
       const message = err instanceof Error ? err.message : "Failed to resend invitation";
       toast.error(message);
-    } finally {
-      setResending((prev) => prev.filter((id) => id !== collaboratorId));
-    }
-  }, [owner, repo]);
+    },
+  });
+
+  const handleResendInvite = (collaboratorId: number) => {
+    setResending((prev) => [...prev, collaboratorId]);
+    resendMutation.mutate(collaboratorId, {
+      onSettled: () => setResending((prev) => prev.filter((id) => id !== collaboratorId)),
+    });
+  };
 
   const headerNode = useMemo(() => {
     const showInviteAction = !isLoading && !error && collaborators.length > 0;
@@ -355,7 +318,6 @@ export function Collaborators({
     collaborators.length,
     emails,
     error,
-    handleInviteCollaborators,
     inviteDialogOpen,
     inviteError,
     isInviting,
@@ -460,7 +422,7 @@ export function Collaborators({
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     <DropdownMenuItem
-                      onClick={() => void handleResendInvite(collaborator.id)}
+                      onClick={() => handleResendInvite(collaborator.id)}
                       disabled={
                         removing.includes(collaborator.id) ||
                         resending.includes(collaborator.id)
