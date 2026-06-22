@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRepoHeader } from "@/components/repo/repo-header-context";
 import { Button } from "@/components/ui/button";
-import { SubmitButton } from "@/components/submit-button";
+import { SubmitButton } from "@/app/(auth)/_components/submit-button";
 import {
   Empty,
   EmptyContent,

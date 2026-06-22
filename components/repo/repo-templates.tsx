@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useUser } from "@/contexts/user-context";
 import templates from "@/lib/templates";
 import { Button } from "@/components/ui/button";
-import { SubmitButton } from "@/components/submit-button";
+import { SubmitButton } from "@/app/(auth)/_components/submit-button";
 import {
   Dialog,
   DialogClose,
