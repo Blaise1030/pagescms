@@ -19,4 +19,13 @@ export const queryKeys = {
 
   reference: (owner: string, repo: string, branch: string, collectionName: string, queryString: string) =>
     ['reference', owner, repo, branch, collectionName, queryString] as const,
+
+  collaborators: (owner: string, repo: string) =>
+    ['collaborators', owner, repo] as const,
+
+  collaboratorInvite: (token: string) =>
+    ['collaboratorInvite', token] as const,
+
+  cacheStatus: (owner: string, repo: string, branch: string) =>
+    ['cacheStatus', owner, repo, branch] as const,
 }
