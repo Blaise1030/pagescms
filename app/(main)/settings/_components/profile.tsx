@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { getInitialsFromName } from "@/lib/utils/avatar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -18,40 +19,41 @@ type ProfileProps = {
 export function Profile({ name, email, githubUsername }: ProfileProps) {
   const router = useRouter();
   const [displayName, setDisplayName] = useState(name?.trim() || "");
-  const [isSaving, setIsSaving] = useState(false);
 
   const initialName = name?.trim() || "";
   const isDirty = displayName.trim() !== initialName;
 
-  const canSave = displayName.trim().length > 0 && isDirty && !isSaving;
+  const updateProfileMutation = useMutation({
+    mutationFn: async (formData: { name: string }) => {
+      const response = await fetch("/api/auth/update-user", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok || !payload?.status) {
+        throw new Error(payload?.message || "Failed to update profile.");
+      }
+      return payload;
+    },
+    onSuccess: () => {
+      toast.success("Profile updated.");
+      router.refresh();
+    },
+    onError: (error: unknown) => {
+      const message = error instanceof Error ? error.message : "Failed to update profile.";
+      toast.error(message);
+    },
+  });
+
+  const canSave = displayName.trim().length > 0 && isDirty && !updateProfileMutation.isPending;
   const avatarLabel = displayName.trim() || email;
 
   const handleSave = async () => {
     const nextName = displayName.trim();
     if (!nextName) return;
 
-    setIsSaving(true);
-    try {
-      const response = await fetch("/api/auth/update-user", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: nextName,
-        }),
-      });
-      const payload = await response.json().catch(() => null);
-      if (!response.ok || !payload?.status) {
-        throw new Error(payload?.message || "Failed to update profile.");
-      }
-
-      toast.success("Profile updated.");
-      router.refresh();
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Failed to update profile.";
-      toast.error(message);
-    } finally {
-      setIsSaving(false);
-    }
+    updateProfileMutation.mutate({ name: nextName });
   };
 
   return (
@@ -95,7 +97,7 @@ export function Profile({ name, email, githubUsername }: ProfileProps) {
             value={displayName}
             onChange={(e) => setDisplayName(e.target.value)}
             maxLength={120}
-            disabled={isSaving}
+            disabled={updateProfileMutation.isPending}
             className="max-w-[260px] h-8 text-sm"
           />
         </div>
@@ -103,7 +105,7 @@ export function Profile({ name, email, githubUsername }: ProfileProps) {
 
       <div className="flex justify-end mt-3">
         <Button size="sm" type="submit" disabled={!canSave}>
-          {isSaving && <Loader className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
+          {updateProfileMutation.isPending && <Loader className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
           Save profile
         </Button>
       </div>

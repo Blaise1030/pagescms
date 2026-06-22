@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useMutation } from "@tanstack/react-query";
 import { signIn } from "@/lib/auth-client";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -35,9 +36,7 @@ export function Identities({
   githubManageUrl,
 }: IdentitiesProps) {
   const router = useRouter();
-  const [pendingAction, setPendingAction] = useState<
-    "connect" | "disconnect" | null
-  >(null);
+  const [pendingAction, setPendingAction] = useState<"connect" | null>(null);
 
   const handleConnectGithub = async () => {
     setPendingAction("connect");
@@ -53,13 +52,12 @@ export function Identities({
     }
   };
 
-  const handleDisconnectGithub = async () => {
-    setPendingAction("disconnect");
-    try {
+  const unlinkMutation = useMutation({
+    mutationFn: async (providerId: string) => {
       const response = await fetch("/api/auth/unlink-account", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ providerId: "github" }),
+        body: JSON.stringify({ providerId }),
       });
 
       const payload = await response.json().catch(() => null);
@@ -69,17 +67,23 @@ export function Identities({
         throw new Error(message);
       }
 
+      return payload;
+    },
+    onSuccess: () => {
       toast.success("GitHub account disconnected.");
       router.refresh();
-    } catch (error) {
+    },
+    onError: (error: unknown) => {
       const message =
         error instanceof Error
           ? error.message
           : "Failed to disconnect GitHub account.";
       toast.error(message);
-    } finally {
-      setPendingAction(null);
-    }
+    },
+  });
+
+  const handleDisconnectGithub = async () => {
+    unlinkMutation.mutate("github");
   };
 
   return (
@@ -121,9 +125,9 @@ export function Identities({
                 <Button
                   size="icon-sm"
                   variant="ghost"
-                  disabled={pendingAction !== null}
+                  disabled={unlinkMutation.isPending}
                 >
-                  {pendingAction === "disconnect" ? (
+                  {unlinkMutation.isPending ? (
                     <Loader className="h-3.5 w-3.5 animate-spin" />
                   ) : (
                     <EllipsisVertical className="h-3.5 w-3.5" />
@@ -146,7 +150,7 @@ export function Identities({
                 <DropdownMenuItem
                   variant="destructive"
                   onClick={handleDisconnectGithub}
-                  disabled={pendingAction !== null}
+                  disabled={unlinkMutation.isPending}
                 >
                   Disconnect
                 </DropdownMenuItem>
