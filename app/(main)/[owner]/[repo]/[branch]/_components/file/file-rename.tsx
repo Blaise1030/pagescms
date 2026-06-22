@@ -1,10 +1,12 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useConfig } from "@/app/(main)/[owner]/[repo]/[branch]/_contexts/config-context";
 import { getRelativePath, joinPathSegments, normalizePath } from "@/lib/utils/file";
 import { getSchemaByName } from "@/lib/schema";
 import { requireApiSuccess } from "@/lib/api-client";
+import { queryKeys } from "@/lib/query-keys";
 import {
   Dialog,
   DialogClose,
@@ -36,8 +38,9 @@ export function FileRename({
   onRename?: (path: string, newPath: string) => void;
 }) {
   const { config } = useConfig();
+  const queryClient = useQueryClient();
   if (!config) throw new Error(`Configuration not found.`);
-  
+
   if (!name) throw new Error("Name is required for FileRename");
 
   const schema = getSchemaByName(config.object, name, type);
@@ -49,35 +52,42 @@ export function FileRename({
 
   const [newRelativePath, setNewRelativePath] = useState(relativePath);
 
+  const renameMutation = useMutation({
+    mutationFn: async ({ fromPath, toPath }: { fromPath: string; toPath: string }) => {
+      const response = await fetch(
+        `/api/${config.owner}/${config.repo}/${encodeURIComponent(config.branch)}/files/${encodeURIComponent(fromPath)}/rename`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            type: (type === "collection" || type === "file") ? "content" : type,
+            name,
+            newPath: toPath,
+          }),
+        }
+      );
+      return requireApiSuccess<any>(response, "Failed to rename file");
+    },
+    onSuccess: (_data, { toPath }) => {
+      if (type === "media" && name) {
+        void queryClient.invalidateQueries({ queryKey: queryKeys.mediaAll(config.owner, config.repo, config.branch, name) });
+      } else if (name) {
+        void queryClient.invalidateQueries({ queryKey: queryKeys.collectionAll(config.owner, config.repo, config.branch, name) });
+      }
+      if (onRename) onRename(path, toPath);
+      onOpenChange(false);
+    },
+  });
+
   const handleRename = async () => {
     try {
       const newPath = joinPathSegments([rootPath, normalizePath(newRelativePath)]);
-      
-      const renamePromise = new Promise(async (resolve, reject) => {
-        try {
-          const response = await fetch(`/api/${config.owner}/${config.repo}/${encodeURIComponent(config.branch)}/files/${encodeURIComponent(normalizedPath)}/rename`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              type: (type === "collection" || type === "file") ? "content" : type,
-              name,
-              newPath,
-            }),
-          });
-          const data = await requireApiSuccess<any>(response, "Failed to rename file");
 
-          resolve(data);
-        } catch (error) {
-          reject(error);
-        }
-      });
+      const renamePromise = renameMutation.mutateAsync({ fromPath: normalizedPath, toPath: newPath });
 
       toast.promise(renamePromise, {
         loading: `Renaming "${path}" to "${newPath}"`,
-        success: (data: any) => {
-          if (onRename) onRename(path, newPath);
-          return data.message;
-        },
+        success: (data: any) => data.message,
         error: (error: any) => error.message,
       });
     } catch (error) {
