@@ -66,7 +66,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query-keys";
 import {
   DropdownMenu,
@@ -440,35 +440,32 @@ function CollectionContent({ name, path }: { name: string; path?: string }) {
     });
   }, [setData]);
 
+  const renameNodeMutation = useMutation({
+    mutationFn: async ({ fromPath, toPath }: { fromPath: string; toPath: string }) => {
+      const response = await fetch(
+        `/api/${config.owner}/${config.repo}/${encodeURIComponent(config.branch)}/files/${encodeURIComponent(fromPath)}/rename`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ type: "content", name, newPath: toPath }),
+        },
+      );
+      return requireApiSuccess<any>(response, "Failed to rename file");
+    },
+    onSuccess: (_data, { fromPath, toPath }) => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.collectionAll(config.owner, config.repo, config.branch, name) });
+    },
+  });
+
   const handleConfirmRenameNode = useCallback(
     (path: string, newPath: string) => {
       try {
         const normalizedPath = normalizePath(path);
         const normalizedNewPath = normalizePath(newPath);
 
-        const renamePromise = new Promise(async (resolve, reject) => {
-          try {
-            const response = await fetch(
-              `/api/${config.owner}/${config.repo}/${encodeURIComponent(config.branch)}/files/${encodeURIComponent(normalizedPath)}/rename`,
-              {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  type: "content",
-                  name,
-                  newPath: normalizedNewPath,
-                }),
-              },
-            );
-            const data = await requireApiSuccess<any>(
-              response,
-              "Failed to rename file",
-            );
-
-            resolve(data);
-          } catch (error) {
-            reject(error);
-          }
+        const renamePromise = renameNodeMutation.mutateAsync({
+          fromPath: normalizedPath,
+          toPath: normalizedNewPath,
         });
 
         toast.promise(renamePromise, {
@@ -485,7 +482,7 @@ function CollectionContent({ name, path }: { name: string; path?: string }) {
         console.error(error);
       }
     },
-    [config.owner, config.repo, config.branch, name, router],
+    [config.owner, config.repo, config.branch, name, router, renameNodeMutation],
   );
 
   const columns = useMemo(() => {
