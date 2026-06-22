@@ -2,7 +2,9 @@
 
 import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "@/lib/query-keys";
 import { BookText, RefreshCcw, Trash2 } from "lucide-react";
 import { useRepoHeader } from "@/app/(main)/[owner]/[repo]/[branch]/_components/repo/repo-header-context";
 import { Button } from "@/components/ui/button";
@@ -176,13 +178,13 @@ export function CachePage({
   repo: string;
   branch: string;
 }) {
-  const [data, setData] = useState<CacheStatusPayload | null>(null);
-  const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
-  const fetchStatus = useCallback(async () => {
-    setLoading(true);
-    try {
+  const queryClient = useQueryClient();
+
+  const { data, isLoading: loading } = useQuery({
+    queryKey: queryKeys.cacheStatus(owner, repo, branch),
+    queryFn: async () => {
       const response = await fetch(
         `/api/${owner}/${repo}/${encodeURIComponent(branch)}/cache`,
       );
@@ -190,42 +192,47 @@ export function CachePage({
         status: string;
         data: CacheStatusPayload;
       }>(response, "Failed to fetch cache status");
-      setData(payload.data);
-    } catch (error: any) {
-      toast.error(error?.message || "Failed to fetch cache status");
-    } finally {
-      setLoading(false);
-    }
-  }, [branch, owner, repo]);
-
-  useEffect(() => {
-    void fetchStatus();
-  }, [fetchStatus]);
-
-  const runAction = useCallback(
-    async (action: string, successMessage: string) => {
-      setActionLoading(action);
-      const loadingId = toast.loading("Updating cache...");
-      try {
-        const response = await fetch(
-          `/api/${owner}/${repo}/${encodeURIComponent(branch)}/cache`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ action }),
-          },
-        );
-        await requireApiSuccess(response, "Failed cache action");
-        toast.success(successMessage, { id: loadingId });
-        await fetchStatus();
-      } catch (error: any) {
-        toast.error(error?.message || "Failed cache action", { id: loadingId });
-      } finally {
-        setActionLoading(null);
-      }
+      return payload.data;
     },
-    [branch, fetchStatus, owner, repo],
-  );
+  });
+
+  const cacheActionMutation = useMutation({
+    mutationFn: async ({ action }: { action: string }) => {
+      const response = await fetch(
+        `/api/${owner}/${repo}/${encodeURIComponent(branch)}/cache`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action }),
+        },
+      );
+      return requireApiSuccess(response, "Failed cache action");
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.cacheStatus(owner, repo, branch),
+      });
+    },
+    onSettled: () => {
+      setActionLoading(null);
+    },
+  });
+
+  const runAction = (action: string, successMessage: string) => {
+    setActionLoading(action);
+    const loadingId = toast.loading("Updating cache...");
+    cacheActionMutation.mutate(
+      { action },
+      {
+        onSuccess: () => toast.success(successMessage, { id: loadingId }),
+        onError: (err: unknown) => {
+          const message =
+            err instanceof Error ? err.message : "Failed cache action";
+          toast.error(message, { id: loadingId });
+        },
+      },
+    );
+  };
 
   const headerNode = useMemo(
     () => (
