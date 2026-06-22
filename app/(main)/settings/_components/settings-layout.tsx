@@ -1,6 +1,6 @@
 "use client";
 
-import { SettingsSidebar } from "@/components/settings/settings-sidebar";
+import { SettingsSidebar } from "@/app/(main)/settings/_components/settings-sidebar";
 import {
   SidebarInset,
   SidebarProvider,

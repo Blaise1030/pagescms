@@ -3,10 +3,10 @@ import { and, eq } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { db } from "@/db";
 import { accountTable } from "@/db/schema";
-import { SettingsLayout } from "@/components/settings/settings-layout";
-import { Installations } from "@/components/settings/installations";
-import { Identities } from "@/components/settings/identities";
-import { Profile } from "@/components/settings/profile";
+import { SettingsLayout } from "@/app/(main)/settings/_components/settings-layout";
+import { Installations } from "@/app/(main)/settings/_components/installations";
+import { Identities } from "@/app/(main)/settings/_components/identities";
+import { Profile } from "@/app/(main)/settings/_components/profile";
 import { DocumentTitle } from "@/components/document-title";
 
 export default async function Page() {
