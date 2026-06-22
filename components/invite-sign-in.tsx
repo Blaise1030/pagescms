@@ -34,6 +34,9 @@ export function InviteSignIn({ token }: { token: string }) {
     queryKey: queryKeys.collaboratorInvite(token),
     queryFn: async () => {
       const response = await fetch(`/api/collaborator-invites/${encodeURIComponent(token)}`);
+      if (!response.ok) {
+        return { status: "unavailable" } as InviteState;
+      }
       return response.json() as Promise<InviteState>;
     },
     retry: false,

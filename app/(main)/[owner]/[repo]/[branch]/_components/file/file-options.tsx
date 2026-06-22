@@ -98,6 +98,9 @@ export function FileOptions({
       }
       if (onDelete) onDelete(path);
     },
+    onError: (err: unknown) => {
+      toast.error(err instanceof Error ? err.message : "Failed to delete file");
+    },
   });
 
   const handleConfirmDelete = async () => {

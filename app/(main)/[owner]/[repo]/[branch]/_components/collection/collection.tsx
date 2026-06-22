@@ -452,7 +452,7 @@ function CollectionContent({ name, path }: { name: string; path?: string }) {
       );
       return requireApiSuccess<any>(response, "Failed to rename file");
     },
-    onSuccess: (_data, { fromPath, toPath }) => {
+    onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.collectionAll(config.owner, config.repo, config.branch, name) });
     },
   });
