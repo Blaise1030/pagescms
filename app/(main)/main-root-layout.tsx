@@ -1,5 +1,5 @@
 import { User } from "@/components/user";
-import { AdminButton } from "@/components/admin-button";
+import { AdminButton } from "@/app/(main)/admin/_components/admin-button";
 import { About } from "@/components/about";
 
 export function MainRootLayout({

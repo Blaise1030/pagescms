@@ -21,7 +21,7 @@ import { RepoActionButtons } from "@/components/repo/repo-action-buttons";
 import { RepoBranches } from "@/components/repo/repo-branches";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { User } from "@/components/user";
-import { AdminButton } from "@/components/admin-button";
+import { AdminButton } from "@/app/(main)/admin/_components/admin-button";
 import { About } from "@/components/about";
 import {
   DropdownMenu,

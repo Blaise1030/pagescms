@@ -15,10 +15,10 @@ import {
   userTable,
 } from "@/db/schema";
 import { DocumentTitle } from "@/components/document-title";
-import { AdminLogoutAllButton, AdminResetCacheButton } from "@/components/admin-confirm-action-button";
-import { AdminTimeAgo } from "@/components/admin-time-ago";
-import { AdminUserSearch } from "@/components/admin-user-search";
-import { AdminUserRowActions } from "@/components/admin-user-row-actions";
+import { AdminLogoutAllButton, AdminResetCacheButton } from "@/app/(main)/admin/_components/admin-confirm-action-button";
+import { AdminTimeAgo } from "@/app/(main)/admin/_components/admin-time-ago";
+import { AdminUserSearch } from "@/app/(main)/admin/_components/admin-user-search";
+import { AdminUserRowActions } from "@/app/(main)/admin/_components/admin-user-row-actions";
 import { buttonVariants } from "@/components/ui/button";
 import {
   Avatar,
