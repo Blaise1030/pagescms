@@ -1,7 +1,7 @@
 export const maxDuration = 30;
 
 import { type NextRequest } from "next/server";
-import { getCodec } from "@/fields/registry";
+import { getCodec } from "@/app/(main)/[owner]/[repo]/[branch]/_fields/registry";
 import { parse } from "@/lib/serialization";
 import { deepMap, getDateFromFilename, getFieldByPath, getSchemaByName, safeAccess } from "@/lib/schema";
 import { getRepoReadContext } from "@/lib/api-repo-context";

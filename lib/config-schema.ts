@@ -5,7 +5,7 @@
  */
 
 import { z } from "zod";
-import { getCodec } from "@/fields/registry";
+import { getCodec } from "@/app/(main)/[owner]/[repo]/[branch]/_fields/registry";
 
 const ActionSchema = z
   .object({

@@ -2,7 +2,7 @@ export const maxDuration = 30;
 
 import { type NextRequest } from "next/server";
 import { parse } from "@/lib/serialization";
-import { getCodec } from "@/fields/registry";
+import { getCodec } from "@/app/(main)/[owner]/[repo]/[branch]/_fields/registry";
 import {
   getDateFromFilename,
   getFieldByPath,

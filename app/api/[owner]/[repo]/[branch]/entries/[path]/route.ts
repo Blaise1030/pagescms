@@ -1,6 +1,6 @@
 import { type NextRequest } from "next/server";
 import { getCachedEntryContent, setCachedEntryContent } from "@/lib/github-cache-file";
-import { getCodec } from "@/fields/registry";
+import { getCodec } from "@/app/(main)/[owner]/[repo]/[branch]/_fields/registry";
 import { deepMap, getSchemaByName } from "@/lib/schema";
 import { parse } from "@/lib/serialization";
 import { getFileExtension, normalizePath } from "@/lib/utils/file";

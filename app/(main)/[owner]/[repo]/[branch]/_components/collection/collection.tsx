@@ -22,7 +22,7 @@ import {
   sortFiles,
 } from "@/lib/utils/file";
 import { CollectionProvider, useCollection } from "@/contexts/collection-context";
-import { getCodec } from "@/fields/registry";
+import { getCodec } from "@/app/(main)/[owner]/[repo]/[branch]/_fields/registry";
 import {
   getFieldByPath,
   safeAccess,

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { getCodec } from "@/fields/registry";
+import { getCodec } from "@/app/(main)/[owner]/[repo]/[branch]/_fields/registry";
 
 describe("getCodec", () => {
   it("returns a codec for a registered field type", () => {
