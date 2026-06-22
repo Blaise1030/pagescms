@@ -10,10 +10,12 @@ import {
 } from "react";
 import { useFormContext } from "react-hook-form";
 import { createPortal } from "react-dom";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Editor, type ImagePickerContext } from "@/components/ui/editor";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import { queryKeys } from "@/lib/query-keys";
 import {
   MediaDialog,
   type MediaDialogHandle,
@@ -318,6 +320,7 @@ const EditComponent = forwardRef(
   (props: EditProps, ref: React.Ref<HTMLDivElement>) => {
     const { config } = useConfig();
     const { isPrivate } = useRepo();
+    const queryClient = useQueryClient();
 
     const {
       value,
@@ -377,6 +380,32 @@ const EditComponent = forwardRef(
       }
       return config.object.media[0] as MediaSchema | undefined;
     }, [config?.object, options.media]);
+
+    const uploadImageMutation = useMutation({
+      mutationFn: async ({ targetPath, body }: { targetPath: string; body: object }) => {
+        const response = await fetch(
+          `/api/${config!.owner}/${config!.repo}/${encodeURIComponent(config!.branch)}/files/${encodeURIComponent(targetPath)}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+          },
+        );
+        if (!response.ok) {
+          throw new Error(`Failed to upload file: ${response.status} ${response.statusText}`);
+        }
+        const payload = (await response.json()) as ApiResponse<FileSaveData>;
+        if (payload.status !== "success") throw new Error(payload.message);
+        return payload;
+      },
+      onSuccess: () => {
+        if (mediaConfig?.name) {
+          void queryClient.invalidateQueries({
+            queryKey: queryKeys.mediaAll(config!.owner, config!.repo, config!.branch, mediaConfig.name),
+          });
+        }
+      },
+    });
 
     const rootPath = useMemo(() => {
       if (!mediaConfig) return undefined;
@@ -795,28 +824,10 @@ const EditComponent = forwardRef(
           uploadFilename,
         ]);
 
-        const response = await fetch(
-          `/api/${config.owner}/${config.repo}/${encodeURIComponent(config.branch)}/files/${encodeURIComponent(targetPath)}`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              type: "media",
-              name: mediaConfig.name,
-              content,
-            }),
-          },
-        );
-        if (!response.ok) {
-          throw new Error(
-            `Failed to upload file: ${response.status} ${response.statusText}`,
-          );
-        }
-
-        const payload = (await response.json()) as ApiResponse<FileSaveData>;
-        if (payload.status !== "success") {
-          throw new Error(payload.message);
-        }
+        const payload = await uploadImageMutation.mutateAsync({
+          targetPath,
+          body: { type: "media", name: mediaConfig.name, content },
+        });
 
         const uploadedPath = payload.data.path || targetPath;
         const src = await toDisplayImageUrl(uploadedPath);
@@ -832,6 +843,7 @@ const EditComponent = forwardRef(
         options.rename,
         rootPath,
         toDisplayImageUrl,
+        uploadImageMutation,
       ],
     );
 
