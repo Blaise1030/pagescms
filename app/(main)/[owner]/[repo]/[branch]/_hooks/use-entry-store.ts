@@ -43,6 +43,9 @@ export function useEntryStore(
   const shaRef = useRef<string | undefined>(undefined);
   const inFlightRef = useRef(false);
   const pendingFlushRef = useRef<Record<string, unknown> | null>(null);
+  const saveRef = useRef<
+    (contentObject: Record<string, unknown>, savePath: string) => Promise<{ path: string; sha: string }>
+  >();
   const queryClient = useQueryClient();
 
   const entryKey = useMemo(
@@ -152,7 +155,7 @@ export function useEntryStore(
       pendingFlushRef.current = null;
       if (pending) {
         inFlightRef.current = false;
-        return save(pending, savePath);
+        return saveRef.current!(pending, savePath);
       }
 
       inFlightRef.current = false;
@@ -166,6 +169,8 @@ export function useEntryStore(
       throw e;
     }
   }, [config, name, path, schema, schemaType, onSave, queryClient, entryKey]);
+
+  saveRef.current = save;
 
   const discard = useCallback(async () => {
     if (!path) return;

@@ -405,6 +405,10 @@ export function Entry({
     && filenameValue.trim().length > 0
     && filenameValue.trim() !== currentFilename;
 
+  const executeSaveRef = useRef<
+    (contentObject: Record<string, unknown>, savePath: string) => Promise<void>
+  >();
+
   const executeSave = useCallback(
     async (contentObject: Record<string, unknown>, savePath: string) => {
       try {
@@ -418,13 +422,15 @@ export function Entry({
           duration: Infinity,
           action: {
             label: "Retry",
-            onClick: () => void executeSave(contentObject, savePath),
+            onClick: () => void executeSaveRef.current?.(contentObject, savePath),
           },
         });
       }
     },
     [setHasRegisteredChanges, storeSave],
   );
+
+  executeSaveRef.current = executeSave;
 
   const onSubmit = async (contentObject: Record<string, unknown>) => {
     if (!path) {
