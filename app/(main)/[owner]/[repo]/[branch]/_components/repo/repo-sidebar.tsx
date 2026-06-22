@@ -10,8 +10,8 @@ import {
 } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useConfig } from "@/contexts/config-context";
-import { useRepo } from "@/contexts/repo-context";
+import { useConfig } from "@/app/(main)/[owner]/[repo]/[branch]/_contexts/config-context";
+import { useRepo } from "@/app/(main)/[owner]/[repo]/[branch]/_contexts/repo-context";
 import { useUser } from "@/contexts/user-context";
 import { hasGithubIdentity } from "@/lib/authz-shared";
 import { isCacheEnabled, isConfigEnabled } from "@/lib/config";

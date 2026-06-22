@@ -5,7 +5,7 @@ import { QueryClient } from "@tanstack/react-query";
 import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
 import { createIDBPersister } from "@/lib/idb-query-persister";
 import { ThemeProvider } from "@/components/theme-provider";
-import { ActionToastProvider } from "@/contexts/action-toast-context";
+import { ActionToastProvider } from "@/app/(main)/[owner]/[repo]/[branch]/_contexts/action-toast-context";
 import { UserProvider } from "@/contexts/user-context";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { applyPointerCursors } from "@/lib/preferences";

@@ -3,7 +3,7 @@
 import { Fragment, memo, type ReactNode, startTransition, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useConfig } from "@/contexts/config-context";
+import { useConfig } from "@/app/(main)/[owner]/[repo]/[branch]/_contexts/config-context";
 import { RepoActionButtons } from "@/app/(main)/[owner]/[repo]/[branch]/_components/repo/repo-action-buttons";
 import {
   extensionCategories,

@@ -6,7 +6,7 @@ import {
   DocumentTitle,
   formatRepoBranchTitle,
 } from "@/components/document-title";
-import { useConfig } from "@/contexts/config-context";
+import { useConfig } from "@/app/(main)/[owner]/[repo]/[branch]/_contexts/config-context";
 import { useUser } from "@/contexts/user-context";
 import { hasGithubIdentity } from "@/lib/authz-shared";
 import { Button } from "@/components/ui/button";

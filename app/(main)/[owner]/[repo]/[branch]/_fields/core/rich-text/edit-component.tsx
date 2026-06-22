@@ -18,8 +18,8 @@ import {
   MediaDialog,
   type MediaDialogHandle,
 } from "@/app/(main)/[owner]/[repo]/[branch]/_components/media/media-dialog";
-import { useConfig } from "@/contexts/config-context";
-import { useRepo } from "@/contexts/repo-context";
+import { useConfig } from "@/app/(main)/[owner]/[repo]/[branch]/_contexts/config-context";
+import { useRepo } from "@/app/(main)/[owner]/[repo]/[branch]/_contexts/repo-context";
 import { getSchemaByName } from "@/lib/schema";
 import {
   getRawUrl,

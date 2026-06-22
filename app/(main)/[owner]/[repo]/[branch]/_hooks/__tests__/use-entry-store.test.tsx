@@ -16,7 +16,7 @@ vi.mock("@/lib/api-client", () => ({
 
 global.fetch = vi.fn().mockResolvedValue(new Response(JSON.stringify({ status: "success", data: { sha: "sha1", path: "content/post.md", contentObject: { title: "Hello" } } })));
 
-import { useEntryStore } from "@/hooks/use-entry-store";
+import { useEntryStore } from "@/app/(main)/[owner]/[repo]/[branch]/_hooks/use-entry-store";
 import { setFileDraft, deleteFileDraft } from "@/lib/idb";
 
 const mockConfig = { owner: "acme", repo: "site", branch: "main", object: null } as any;

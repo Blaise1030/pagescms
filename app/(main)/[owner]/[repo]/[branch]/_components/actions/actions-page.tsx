@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useRepoHeader } from "@/app/(main)/[owner]/[repo]/[branch]/_components/repo/repo-header-context";
-import { useActionToasts } from "@/contexts/action-toast-context";
+import { useActionToasts } from "@/app/(main)/[owner]/[repo]/[branch]/_contexts/action-toast-context";
 import { getInitialsFromName } from "@/lib/utils/avatar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";

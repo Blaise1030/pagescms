@@ -2,8 +2,8 @@
 
 import { useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { useConfig } from "@/contexts/config-context";
-import { useRepo } from "@/contexts/repo-context";
+import { useConfig } from "@/app/(main)/[owner]/[repo]/[branch]/_contexts/config-context";
+import { useRepo } from "@/app/(main)/[owner]/[repo]/[branch]/_contexts/repo-context";
 import { RepoBranches } from "./repo-branches";
 import { Button } from "@/components/ui/button";
 import {

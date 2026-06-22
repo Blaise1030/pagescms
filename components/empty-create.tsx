@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader as LucideLoader } from "lucide-react";
-import { useConfig } from "@/contexts/config-context";
+import { useConfig } from "@/app/(main)/[owner]/[repo]/[branch]/_contexts/config-context";
 import { normalizePath } from "@/lib/utils/file";
 import { getSchemaByName, initializeState } from "@/lib/schema";
 import { requireApiSuccess } from "@/lib/api-client";

@@ -2,7 +2,7 @@
 
 import { formatDistanceToNow } from "date-fns";
 import { getInitialsFromName } from "@/lib/utils/avatar";
-import { useConfig } from "@/contexts/config-context";
+import { useConfig } from "@/app/(main)/[owner]/[repo]/[branch]/_contexts/config-context";
 import type { EntryHistoryItem } from "@/types/api";
 import {
   Avatar,

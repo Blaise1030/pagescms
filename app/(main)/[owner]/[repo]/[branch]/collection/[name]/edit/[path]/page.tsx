@@ -2,7 +2,7 @@
 
 import { use, useMemo } from "react";
 import { DocumentTitle, formatRepoBranchTitle } from "@/components/document-title";
-import { useConfig } from "@/contexts/config-context";
+import { useConfig } from "@/app/(main)/[owner]/[repo]/[branch]/_contexts/config-context";
 import { getSchemaByName } from "@/lib/schema";
 import { Entry } from "@/app/(main)/[owner]/[repo]/[branch]/_components/entry/entry";
 

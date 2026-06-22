@@ -11,7 +11,7 @@ import {
 } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useConfig } from "@/contexts/config-context";
+import { useConfig } from "@/app/(main)/[owner]/[repo]/[branch]/_contexts/config-context";
 import { RepoActionButtons } from "@/app/(main)/[owner]/[repo]/[branch]/_components/repo/repo-action-buttons";
 import {
   getParentPath,
@@ -21,7 +21,7 @@ import {
   normalizePath,
   sortFiles,
 } from "@/lib/utils/file";
-import { CollectionProvider, useCollection } from "@/contexts/collection-context";
+import { CollectionProvider, useCollection } from "@/app/(main)/[owner]/[repo]/[branch]/_contexts/collection-context";
 import { getCodec } from "@/app/(main)/[owner]/[repo]/[branch]/_fields/registry";
 import {
   getFieldByPath,

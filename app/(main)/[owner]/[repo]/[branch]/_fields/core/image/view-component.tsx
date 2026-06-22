@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import { Thumbnail } from "@/components/thumbnail";
 import { Field } from "@/types/field";
-import { useConfig } from "@/contexts/config-context";
+import { useConfig } from "@/app/(main)/[owner]/[repo]/[branch]/_contexts/config-context";
 
 const ViewComponent = ({
   value,

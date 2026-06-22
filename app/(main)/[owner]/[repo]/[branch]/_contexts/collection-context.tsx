@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useMemo } from "react";
-import { useConfig } from "@/contexts/config-context";
+import { useConfig } from "@/app/(main)/[owner]/[repo]/[branch]/_contexts/config-context";
 import { getSchemaByName, getPrimaryField } from "@/lib/schema";
 import { resolveContentOperations } from "@/lib/operations";
 import { getSchemaActions, type RepoActionConfig } from "@/lib/actions";

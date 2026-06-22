@@ -2,7 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
-import { useConfig } from "@/contexts/config-context";
+import { useConfig } from "@/app/(main)/[owner]/[repo]/[branch]/_contexts/config-context";
 import { getSchemaByName } from "@/lib/schema";
 import { queryKeys } from "@/lib/query-keys";
 import { Field } from "@/types/field";

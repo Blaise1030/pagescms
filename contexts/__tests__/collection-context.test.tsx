@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import React from "react";
 
-vi.mock("@/contexts/config-context", () => ({
+vi.mock("@/app/(main)/[owner]/[repo]/[branch]/_contexts/config-context", () => ({
   useConfig: vi.fn(() => ({
     config: {
       object: {
@@ -14,7 +14,7 @@ vi.mock("@/contexts/config-context", () => ({
   })),
 }));
 
-import { CollectionProvider, useCollection } from "@/contexts/collection-context";
+import { CollectionProvider, useCollection } from "@/app/(main)/[owner]/[repo]/[branch]/_contexts/collection-context";
 
 function TestConsumer() {
   const { schema, operations } = useCollection();

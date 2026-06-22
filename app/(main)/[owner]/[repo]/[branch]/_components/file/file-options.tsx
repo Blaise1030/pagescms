@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useConfig } from "@/contexts/config-context";
+import { useConfig } from "@/app/(main)/[owner]/[repo]/[branch]/_contexts/config-context";
 import { getParentPath, getRelativePath, joinPathSegments, normalizePath } from "@/lib/utils/file";
 import { getSchemaByName } from "@/lib/schema";
 import { requireApiSuccess } from "@/lib/api-client";

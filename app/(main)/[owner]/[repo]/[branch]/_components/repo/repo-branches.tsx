@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { useRepo } from "@/contexts/repo-context";
-import { useConfig } from "@/contexts/config-context";
+import { useRepo } from "@/app/(main)/[owner]/[repo]/[branch]/_contexts/repo-context";
+import { useConfig } from "@/app/(main)/[owner]/[repo]/[branch]/_contexts/config-context";
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { requireApiSuccess } from "@/lib/api-client";

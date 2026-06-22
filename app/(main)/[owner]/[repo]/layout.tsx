@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { getToken } from "@/lib/token";
-import { RepoProvider } from "@/contexts/repo-context";
+import { RepoProvider } from "@/app/(main)/[owner]/[repo]/[branch]/_contexts/repo-context";
 import { getServerSession } from "@/lib/session-server";
 import { getRepoSnapshot } from "@/lib/github-cache-file";
 import { GithubAuthExpired } from "@/components/github-auth-expired";

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, cloneElement, useMemo, useCallback, createContext, useContext, useState } from "react";
-import { useConfig } from "@/contexts/config-context";
+import { useConfig } from "@/app/(main)/[owner]/[repo]/[branch]/_contexts/config-context";
 import { getUploadFileName, joinPathSegments } from "@/lib/utils/file";
 import { toast } from "sonner";
 import { getSchemaByName } from "@/lib/schema";

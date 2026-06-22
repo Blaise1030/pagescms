@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useConfig } from "@/contexts/config-context";
+import { useConfig } from "@/app/(main)/[owner]/[repo]/[branch]/_contexts/config-context";
 import { joinPathSegments, normalizePath } from "@/lib/utils/file";
 import { toast } from "sonner";
 import {

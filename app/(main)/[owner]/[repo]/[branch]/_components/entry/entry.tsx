@@ -4,11 +4,11 @@ import { Fragment, useEffect, useState, useMemo, useCallback, useRef } from "rea
 import type { ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { useConfig } from "@/contexts/config-context";
+import { useConfig } from "@/app/(main)/[owner]/[repo]/[branch]/_contexts/config-context";
 import { parseAndValidateConfig } from "@/lib/config";
 import { resolveContentOperations } from "@/lib/operations";
 import { requireApiSuccess } from "@/lib/api-client";
-import { useEntryStore } from "@/hooks/use-entry-store";
+import { useEntryStore } from "@/app/(main)/[owner]/[repo]/[branch]/_hooks/use-entry-store";
 import { getSchemaActions } from "@/lib/actions";
 import {
   generateFilename,

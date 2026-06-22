@@ -7,7 +7,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { MediaUpload } from "@/app/(main)/[owner]/[repo]/[branch]/_components/media/media-upload";
 import { MediaDialog } from "@/app/(main)/[owner]/[repo]/[branch]/_components/media/media-dialog";
 import { Upload, FolderOpen, ArrowUpRight, Trash2 } from "lucide-react";
-import { useConfig } from "@/contexts/config-context";
+import { useConfig } from "@/app/(main)/[owner]/[repo]/[branch]/_contexts/config-context";
 import { normalizeMediaPath, normalizePath } from "@/lib/utils/file";
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, rectSortingStrategy } from '@dnd-kit/sortable';

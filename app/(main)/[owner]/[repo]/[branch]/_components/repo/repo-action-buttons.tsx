@@ -11,7 +11,7 @@ import {
   Loader,
 } from "lucide-react";
 import { toast } from "sonner";
-import { useActionToasts } from "@/contexts/action-toast-context";
+import { useActionToasts } from "@/app/(main)/[owner]/[repo]/[branch]/_contexts/action-toast-context";
 import { useUser } from "@/contexts/user-context";
 import { hasGithubIdentity } from "@/lib/authz-shared";
 import { Button } from "@/components/ui/button";
