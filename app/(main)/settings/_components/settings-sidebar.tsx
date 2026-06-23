@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ArrowLeft, Palette, User } from "lucide-react";
+import { DASHBOARD_PATH } from "@/lib/routes";
 import {
   Sidebar,
   SidebarContent,
@@ -26,7 +27,7 @@ const settingsNav = [
   },
 ];
 
-export function SettingsSidebar({ backHref = "/" }: { backHref?: string }) {
+export function SettingsSidebar({ backHref = DASHBOARD_PATH }: { backHref?: string }) {
   const pathname = usePathname();
 
   return (

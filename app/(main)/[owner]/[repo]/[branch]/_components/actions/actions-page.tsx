@@ -496,9 +496,7 @@ export function ActionsPage({
                 className="text-muted-foreground hover:text-foreground"
               >
                 <Link
-                  href="https://pagescms.org/docs/configuration/actions/"
-                  target="_blank"
-                  rel="noreferrer"
+                  href="/docs/configuration/actions"
                 >
                   <BookText />
                   <span className="sr-only">View docs</span>

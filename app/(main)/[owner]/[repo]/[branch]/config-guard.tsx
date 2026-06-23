@@ -7,6 +7,7 @@ import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyTitle } from "
 import { useConfigPromise } from "@/app/(main)/[owner]/[repo]/[branch]/_contexts/config-context";
 import { useRepo } from "@/app/(main)/[owner]/[repo]/[branch]/_contexts/repo-context";
 import { trackVisit } from "@/lib/tracker";
+import { DASHBOARD_PATH } from "@/lib/routes";
 
 export function ConfigGuard({
   branch,
@@ -49,7 +50,7 @@ export function ConfigGuard({
           <EmptyDescription>You do not have permission to access this repository.</EmptyDescription>
         </EmptyHeader>
         <EmptyContent>
-          <Link className={buttonVariants({ variant: "default" })} href="/">
+          <Link className={buttonVariants({ variant: "default" })} href={DASHBOARD_PATH}>
             Choose another repository
           </Link>
         </EmptyContent>

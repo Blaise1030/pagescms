@@ -70,9 +70,7 @@ export default function Page() {
                 className="text-muted-foreground hover:text-foreground"
               >
                 <Link
-                  href="https://pagescms.org/docs/configuration/"
-                  target="_blank"
-                  rel="noreferrer"
+                  href="/docs/configuration"
                 >
                   <BookText />
                   <span className="sr-only">Configuration docs</span>

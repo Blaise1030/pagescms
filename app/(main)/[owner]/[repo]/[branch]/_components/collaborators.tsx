@@ -284,9 +284,7 @@ export function Collaborators({
                 className="text-muted-foreground hover:text-foreground"
               >
                 <Link
-                  href="https://pagescms.org/docs/configuration/collaborators/"
-                  target="_blank"
-                  rel="noreferrer"
+                  href="/docs/configuration/collaborators"
                 >
                   <BookText />
                   <span className="sr-only">Collaborators docs</span>

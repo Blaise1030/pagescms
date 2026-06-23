@@ -11,15 +11,16 @@ export function AppLogo({
   pulse?: boolean;
 }) {
   return (
-    <svg
-      className={cn(pulse && "animate-pulse", className)}
+    <div className={cn(pulse && "animate-pulse", "bg-foreground p-0.5 rounded-sm",className)}>
+      <svg      
       viewBox="0 0 24 24"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       aria-hidden="true"
     >
-      <rect width="24" height="24" rx="4.8" className="fill-muted" />
+      <rect width="24" height="24" rx="4.8" className="fill-foreground" />
       <path d={LOGO_PATH} className="fill-background" />
     </svg>
+    </div>    
   );
 }
