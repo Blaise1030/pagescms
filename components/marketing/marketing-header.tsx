@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { AppLogo } from "@/components/app-logo";
 import { buttonVariants } from "@/components/ui/button";
-import { APP_NAME } from "@/lib/brand";
+import { APP_NAME, FORK_URL } from "@/lib/brand";
 import { cn } from "@/lib/utils";
 import { DOCS_PATH, SIGN_IN_PATH } from "@/lib/routes";
 
@@ -13,7 +13,7 @@ const navItems = [
   { label: "Docs", href: DOCS_PATH },
   {
     label: "GitHub",
-    href: "https://github.com/Blaise1030/pagescms",
+    href: FORK_URL,
     external: true,
   },
 ] as const;

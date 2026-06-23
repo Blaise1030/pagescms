@@ -14,7 +14,7 @@ const resourceLinks = [
 
 export function MarketingFooter() {
   return (
-    <footer className="sticky bottom-0 -z-10 bg-gradient-to-b from-transparent via-transparent to-background border-t-0">
+    <footer className="bg-gradient-to-b from-transparent via-transparent to-background border-t-0">
       <div className="mx-auto flex max-w-6xl flex-col gap-10 px-4 py-14 md:flex-row md:items-start md:px-6">
         <div className="flex-1 space-y-3">
           <p className="text-sm font-medium tracking-tight text-foreground">{APP_NAME}</p>

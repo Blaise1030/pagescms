@@ -53,7 +53,6 @@ export default function HomePage() {
           <div className="absolute inset-0 -z-10 rounded-3xl bg-[radial-gradient(ellipse_at_top,rgba(99,102,241,0.15),transparent_60%)]" />
           <div className="marketing-hero-glow rounded-2xl border border-border/60 bg-card/30 backdrop-blur-sm overflow-hidden">
             <div className="flex h-[320px] items-center justify-center text-muted-foreground/40 text-sm md:h-[480px]">
-              {/* Replace with actual screenshot: <Image src="/screenshot.png" alt="Editor" fill className="object-cover object-top" /> */}
               Editor screenshot
             </div>
           </div>
@@ -97,7 +96,7 @@ export default function HomePage() {
       </section>
 
       {/* Bento Feature Grid */}
-      <section className="mx-auto max-w-6xl px-4 pb-24 md:px-6">
+      <section id="agents" className="mx-auto max-w-6xl px-4 pb-24 md:px-6">
         {/* Row 1 */}
         <div className="grid gap-4 md:grid-cols-3">
           {/* Large card — 2/3 */}
