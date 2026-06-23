@@ -1,5 +1,33 @@
 # Changelog
 
+## [3.4.0-alpha.1](https://github.com/Blaise1030/pagescms/compare/pagescms-v3.3.0-alpha.1...pagescms-v3.4.0-alpha.1) (2026-06-22)
+
+
+### Features
+
+* add collaborators, collaboratorInvite, cacheStatus query keys ([de856d6](https://github.com/Blaise1030/pagescms/commit/de856d68e8dd2a1e9b4343ab8173785f7a0484c2))
+* add searchable repo switcher, sidebar hide mode, and UI polish ([1937289](https://github.com/Blaise1030/pagescms/commit/1937289a07a7e3f203c8e09664685a7d8a72555c))
+* migrate cache-page to useQuery + useMutation ([e7ff353](https://github.com/Blaise1030/pagescms/commit/e7ff3534b25829e4391488db28904124370768dd))
+* migrate collaborators to useQuery + useMutation ([8f3d012](https://github.com/Blaise1030/pagescms/commit/8f3d01286498eb0d202b1f64647a7ba81f8d917f))
+* migrate collection rename-node to useMutation ([bd3688d](https://github.com/Blaise1030/pagescms/commit/bd3688d2d7a60dd71220ee1f3c1339164ca6c080))
+* migrate data fetching to TanStack Query and fix infinite re-render ([e1495ac](https://github.com/Blaise1030/pagescms/commit/e1495acd518a8067fc83f97e43489a0b713664dd))
+* migrate data fetching to TanStack Query and fix infinite re-render ([fa51b4b](https://github.com/Blaise1030/pagescms/commit/fa51b4b69c441037dba05651a4db3bd023310d4f))
+* migrate empty-create to useMutation ([f7f106b](https://github.com/Blaise1030/pagescms/commit/f7f106bd2004158bd15eecc322af06505819acba))
+* migrate entry create/rename to useMutation ([1cdb6c5](https://github.com/Blaise1030/pagescms/commit/1cdb6c5cc1866c33ff3a506e0c02bbe165856d6c))
+* migrate file-options delete to useMutation ([2d4235c](https://github.com/Blaise1030/pagescms/commit/2d4235ceee3c061eafc28d1322e3da6f7dbb800f))
+* migrate file-rename to useMutation ([521c58d](https://github.com/Blaise1030/pagescms/commit/521c58dfdc8f9fbee85d97d4f5d1ac217a0e3e4f))
+* migrate invite-sign-in to useQuery + useMutation ([45f7785](https://github.com/Blaise1030/pagescms/commit/45f7785206a8f1b729a31a52746b762a78ae8e7b))
+* migrate rich-text image upload to useMutation ([9f70c5a](https://github.com/Blaise1030/pagescms/commit/9f70c5a9ee3431b2f4385601327460b40a0fa00d))
+* migrate settings mutations to useMutation ([165b1d1](https://github.com/Blaise1030/pagescms/commit/165b1d103628df8faf95aab582ebf517fbacbaab))
+* **task-11:** migrate reference edit-component useEffect fetches to useQuery ([738619c](https://github.com/Blaise1030/pagescms/commit/738619c2ecb04384c7782d77b982fc7c635f0869))
+
+
+### Bug Fixes
+
+* address final review findings (onError toast, invite queryFn error handling, unused param) ([c0aa34b](https://github.com/Blaise1030/pagescms/commit/c0aa34bc2a65cf1b924de97c66b3cf414cdc715a))
+* remove max-width constraint on media page layout ([89fa17f](https://github.com/Blaise1030/pagescms/commit/89fa17ff00c5b560b262b13cf671b851ae2c1f7e))
+* resolve self-referencing useCallback ESLint errors ([58fd767](https://github.com/Blaise1030/pagescms/commit/58fd767dae557265df8edb1ab2842a3f7d600725))
+
 ## [3.3.0-alpha.1](https://github.com/Blaise1030/pagescms/compare/pagescms-v3.2.0-alpha.1...pagescms-v3.3.0-alpha.1) (2026-06-21)
 
 
