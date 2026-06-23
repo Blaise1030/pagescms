@@ -1,5 +1,27 @@
 # Changelog
 
+## [3.5.0-alpha.1](https://github.com/Blaise1030/pagescms/compare/pagescms-v3.4.0-alpha.1...pagescms-v3.5.0-alpha.1) (2026-06-23)
+
+
+### Features
+
+* add markdown docs site and move dashboard to /projects ([a253ca8](https://github.com/Blaise1030/pagescms/commit/a253ca8a1801db57de561b91430374d4618b0215))
+* add scroll border to marketing header ([bc842f5](https://github.com/Blaise1030/pagescms/commit/bc842f5090d14a7a9c82ba4cbc0770e87173385c))
+* left-align hero and unify page width to max-w-[1400px] ([24c9cd0](https://github.com/Blaise1030/pagescms/commit/24c9cd0fc4d79942eee07f7c9e1963cf59a7f48a))
+* multi-column footer layout ([0586769](https://github.com/Blaise1030/pagescms/commit/0586769b66d2e844f7e80310667bdb4d4e128d34))
+* rebuild homepage with Linear-style layout ([8390929](https://github.com/Blaise1030/pagescms/commit/83909292a9f7b8ddf93d9fc9c7379141011fbbc3))
+* unify header width and show footer on docs pages ([82930b4](https://github.com/Blaise1030/pagescms/commit/82930b4d1f88659414b3c0e94904912a2eb9768c))
+
+
+### Bug Fixes
+
+* escape apostrophe in marketing hero headline ([6651f06](https://github.com/Blaise1030/pagescms/commit/6651f0655775809f361c86f78bdda1dbc47cee0d))
+* FORK_URL in header, footer z-index, cleanup ([46ff847](https://github.com/Blaise1030/pagescms/commit/46ff847cb4f6f9d731a04ccb2e9dede71b73c250))
+* hero headline font-medium ([891e6c8](https://github.com/Blaise1030/pagescms/commit/891e6c813a7c064db09d0557fb42797d2a8d1eff))
+* remove all gradients and glows from marketing pages ([dabbaa2](https://github.com/Blaise1030/pagescms/commit/dabbaa2772d91294cb30268f2e3fd75ab15372d2))
+* use font-light for hero headline ([3576e62](https://github.com/Blaise1030/pagescms/commit/3576e62f7e05fa29a079e68034aaea9b76bf091d))
+* use FORK_URL constant and correct pillar copy ([365aab9](https://github.com/Blaise1030/pagescms/commit/365aab9e168fea32df640abe59e33254fe5172d6))
+
 ## [3.4.0-alpha.1](https://github.com/Blaise1030/pagescms/compare/pagescms-v3.3.0-alpha.1...pagescms-v3.4.0-alpha.1) (2026-06-22)
 
 
