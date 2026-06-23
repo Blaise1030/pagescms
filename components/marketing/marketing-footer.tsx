@@ -15,7 +15,7 @@ const resourceLinks = [
 export function MarketingFooter() {
   return (
     <footer className="border-t-0">
-      <div className="mx-auto flex max-w-[1400px] flex-col gap-10 px-4 py-14 md:flex-row md:items-start md:px-6">
+      <div className="mx-auto flex max-w-screen-xl flex-col gap-10 px-4 py-14 md:flex-row md:items-start md:px-6">
         <div className="flex-1 space-y-3">
           <p className="text-sm font-medium tracking-tight text-foreground">{APP_NAME}</p>
           <p className="max-w-xs text-sm leading-6 text-muted-foreground">
@@ -24,7 +24,7 @@ export function MarketingFooter() {
           <p className="text-xs text-muted-foreground/60">{FORK_COPYRIGHT}</p>
         </div>
 
-        <div className="flex gap-x-16 text-sm">
+        <div className="flex flex-col gap-8 text-sm md:flex-row md:gap-x-16">
           <div className="space-y-3">
             <p className="font-medium text-foreground">Product</p>
             <nav className="flex flex-col gap-2 text-muted-foreground">

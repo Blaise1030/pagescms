@@ -20,6 +20,7 @@ import { AdminTimeAgo } from "@/app/(main)/admin/_components/admin-time-ago";
 import { AdminUserSearch } from "@/app/(main)/admin/_components/admin-user-search";
 import { AdminUserRowActions } from "@/app/(main)/admin/_components/admin-user-row-actions";
 import { buttonVariants } from "@/components/ui/button";
+import { DASHBOARD_PATH } from "@/lib/routes";
 import {
   Avatar,
   AvatarFallback,
@@ -182,7 +183,7 @@ export default async function Page({
             buttonVariants({ variant: "outline", size: "sm" }),
             "inline-flex",
           )}
-          href="/"
+          href={DASHBOARD_PATH}
         >
           <ArrowLeft />
           Go home

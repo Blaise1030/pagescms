@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { emailOtp, signIn } from "@/lib/auth-client";
 import { getAuthCallbackURL, getSafeRedirect } from "@/lib/auth-redirect";
+import { DASHBOARD_PATH } from "@/lib/routes";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { OtpVerificationForm } from "@/components/otp-verification-form";
@@ -26,7 +27,7 @@ export function SignIn() {
   const safeRedirect = getSafeRedirect(redirectParam);
   const callbackURL = getAuthCallbackURL(safeRedirect);
   const errorCallbackURL =
-    safeRedirect === "/"
+    safeRedirect === DASHBOARD_PATH
       ? "/sign-in"
       : `/sign-in?redirect=${encodeURIComponent(safeRedirect)}`;
 

@@ -15,7 +15,9 @@ export default async function Page({
     headers: requestHeaders,
   });
   const safeRedirect = getSafeRedirect(resolvedSearchParams.redirect);
-  if (session?.user) return redirect(safeRedirect === "/sign-in" ? "/" : safeRedirect);
+  if (session?.user) {
+    return redirect(safeRedirect === "/sign-in" ? "/projects" : safeRedirect);
+  }
 
 	return (
     <SignIn/>

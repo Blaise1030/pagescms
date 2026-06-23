@@ -15,7 +15,7 @@ import {
   EmptyHeader,
   EmptyTitle,
 } from "@/components/ui/empty";
-import { MainRootLayout } from "./main-root-layout";
+import { MainRootLayout } from "../main-root-layout";
 import { getVisits } from "@/lib/tracker";
 import { AppLoadingShell } from "@/components/app-loading-shell";
 

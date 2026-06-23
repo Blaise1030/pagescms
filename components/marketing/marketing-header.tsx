@@ -35,9 +35,7 @@ export function MarketingHeader() {
         scrolled && "border-b border-border/40",
       )}
     >
-      <div
-        className="mx-auto flex h-14 max-w-[1400px] items-center gap-4 px-4 md:px-6"
-      >
+      <div className="mx-auto flex h-14 max-w-screen-xl items-center gap-4 px-4 md:px-6">
         <Link
           href="/"
           className="flex items-center gap-2.5 text-sm font-medium tracking-tight text-foreground/90 transition-colors hover:text-foreground"
@@ -46,34 +44,28 @@ export function MarketingHeader() {
           <span>{APP_NAME}</span>
         </Link>
 
-        <nav className="ml-auto hidden items-center gap-1 md:flex">
-          {navItems.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={cn(
-                "rounded-md px-3 py-1.5 text-sm transition-colors",
-                pathname.startsWith(item.href) && !item.external
-                  ? "text-foreground"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-              {...(item.external
-                ? { target: "_blank", rel: "noopener noreferrer" }
-                : {})}
-            >
-              {item.label}
-            </Link>
-          ))}
-        </nav>
+        <div className="ml-auto flex items-center gap-2">
+          <nav className="hidden items-center gap-1 md:flex">
+            {navItems.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={cn(
+                  "rounded-md px-3 py-1.5 text-sm transition-colors",
+                  pathname.startsWith(item.href) && !item.external
+                    ? "text-foreground"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+                {...(item.external
+                  ? { target: "_blank", rel: "noopener noreferrer" }
+                  : {})}
+              >
+                {item.label}
+              </Link>
+            ))}
+          </nav>
 
-        <div className="flex items-center">
-          <Link
-            href={SIGN_IN_PATH}
-            className={cn(
-              buttonVariants({ size: "sm" }),
-              "bg-foreground text-background hover:bg-foreground/90",
-            )}
-          >
+          <Link href={SIGN_IN_PATH} className={buttonVariants({ size: "sm" })}>
             Get started
           </Link>
         </div>

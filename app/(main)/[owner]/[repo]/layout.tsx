@@ -10,6 +10,7 @@ import { invalidateSessionForGithubAuthError } from "@/lib/github-auth-server";
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
 import Link from "next/link";
 import { buttonVariants } from "@/components/ui/button";
+import { DASHBOARD_PATH } from "@/lib/routes";
 
 export default async function Layout({
   children,
@@ -44,7 +45,7 @@ export default async function Layout({
             <EmptyDescription>Create a branch and add a &quot;.pages.yml&quot; file to configure this repository.</EmptyDescription>
           </EmptyHeader>
           <EmptyContent>
-            <Link className={buttonVariants({ variant: "default" })} href="/">
+            <Link className={buttonVariants({ variant: "default" })} href={DASHBOARD_PATH}>
               Choose another repository
             </Link>
           </EmptyContent>
@@ -73,7 +74,7 @@ export default async function Layout({
               <EmptyDescription>It may have been removed, renamed, or the URL may be incorrect.</EmptyDescription>
             </EmptyHeader>
             <EmptyContent>
-              <Link className={buttonVariants({ variant: "default" })} href="/">
+              <Link className={buttonVariants({ variant: "default" })} href={DASHBOARD_PATH}>
                 Choose another repository
               </Link>
             </EmptyContent>
@@ -87,7 +88,7 @@ export default async function Layout({
               <EmptyDescription>You do not have permission to access this repository.</EmptyDescription>
             </EmptyHeader>
             <EmptyContent>
-              <Link className={buttonVariants({ variant: "default" })} href="/">
+              <Link className={buttonVariants({ variant: "default" })} href={DASHBOARD_PATH}>
                 Choose another repository
               </Link>
             </EmptyContent>
