@@ -31,7 +31,7 @@ export function MarketingHeader() {
   return (
     <header
       className={cn(
-        "sticky top-0 z-50 bg-gradient-to-t from-transparent via-transparent to-background transition-all duration-200",
+        "sticky top-0 z-50 bg-background transition-all duration-200",
         scrolled && "border-b border-border/40",
       )}
     >

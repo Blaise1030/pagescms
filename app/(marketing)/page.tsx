@@ -50,8 +50,7 @@ export default function HomePage() {
 
         {/* Product screenshot placeholder */}
         <div className="marketing-fade-up marketing-fade-up-delay-3 relative mt-16 w-full">
-          <div className="absolute inset-0 -z-10 rounded-3xl bg-[radial-gradient(ellipse_at_top,rgba(99,102,241,0.15),transparent_60%)]" />
-          <div className="marketing-hero-glow rounded-2xl border border-border/60 bg-card/30 backdrop-blur-sm overflow-hidden">
+          <div className="rounded-2xl border border-border/60 bg-card/30 backdrop-blur-sm overflow-hidden">
             <div className="flex h-[320px] items-center justify-center text-muted-foreground/40 text-sm md:h-[480px]">
               Editor screenshot
             </div>
@@ -164,10 +163,7 @@ export default function HomePage() {
 
       {/* CTA Section */}
       <section className="mx-auto max-w-[1400px] px-4 pb-32 md:px-6">
-        <div className="relative overflow-hidden rounded-3xl border border-border/60 bg-card/20 px-8 py-16 text-center">
-          {/* Top-right radial glow */}
-          <div className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-[radial-gradient(circle,rgba(99,102,241,0.18),transparent_70%)]" />
-
+        <div className="rounded-3xl border border-border/60 bg-card/20 px-8 py-16 text-center">
           <h2 className="mx-auto max-w-xl text-3xl font-bold tracking-[-0.03em] text-foreground md:text-4xl">
             Ready to edit content in the AI era?
           </h2>
