@@ -9,28 +9,28 @@ export default function HomePage() {
   return (
     <div className="relative overflow-hidden">
       {/* Hero */}
-      <section className="relative flex flex-col items-center px-4 pb-24 pt-24 text-center md:pt-32">
+      <section className="relative mx-auto flex max-w-[1400px] flex-col px-4 pb-24 pt-24 md:px-6 md:pt-32">
         <MarketingBackground />
 
         {/* Pill badge */}
-        <div className="marketing-fade-up mb-8 inline-flex items-center gap-2 rounded-full border border-border/60 bg-card/30 px-3 py-1 text-xs text-muted-foreground backdrop-blur-sm">
+        <div className="marketing-fade-up mb-8 inline-flex w-fit items-center gap-2 rounded-full border border-border/60 bg-card/30 px-3 py-1 text-xs text-muted-foreground backdrop-blur-sm">
           <span className="text-foreground font-medium">New</span>
           <span>→</span>
           <span>AI & MCP agents</span>
         </div>
 
         {/* Headline */}
-        <h1 className="marketing-fade-up marketing-fade-up-delay-1 mx-auto max-w-3xl text-5xl font-bold tracking-[-0.03em] text-balance text-foreground md:text-7xl">
+        <h1 className="marketing-fade-up marketing-fade-up-delay-1 max-w-3xl text-5xl font-bold tracking-[-0.03em] text-balance text-foreground md:text-7xl">
           Git-based content editing for the AI era
         </h1>
 
         {/* Subtext */}
-        <p className="marketing-fade-up marketing-fade-up-delay-2 mx-auto mt-6 max-w-xl text-base leading-7 text-muted-foreground md:text-lg">
+        <p className="marketing-fade-up marketing-fade-up-delay-2 mt-6 max-w-xl text-base leading-7 text-muted-foreground md:text-lg">
           Let Claude and ChatGPT draft, edit, and review content inside your existing workflow. Git stays the source of truth.
         </p>
 
         {/* CTAs */}
-        <div className="marketing-fade-up marketing-fade-up-delay-3 mt-10 flex flex-wrap items-center justify-center gap-3">
+        <div className="marketing-fade-up marketing-fade-up-delay-3 mt-10 flex flex-wrap items-center gap-3">
           <Link
             href={SIGN_IN_PATH}
             className={cn(
@@ -49,7 +49,7 @@ export default function HomePage() {
         </div>
 
         {/* Product screenshot placeholder */}
-        <div className="marketing-fade-up marketing-fade-up-delay-3 relative mt-16 w-full max-w-4xl">
+        <div className="marketing-fade-up marketing-fade-up-delay-3 relative mt-16 w-full">
           <div className="absolute inset-0 -z-10 rounded-3xl bg-[radial-gradient(ellipse_at_top,rgba(99,102,241,0.15),transparent_60%)]" />
           <div className="marketing-hero-glow rounded-2xl border border-border/60 bg-card/30 backdrop-blur-sm overflow-hidden">
             <div className="flex h-[320px] items-center justify-center text-muted-foreground/40 text-sm md:h-[480px]">
@@ -60,7 +60,7 @@ export default function HomePage() {
       </section>
 
       {/* 3-Pillar Row */}
-      <section id="features" className="mx-auto max-w-6xl px-4 py-24 md:px-6">
+      <section id="features" className="mx-auto max-w-[1400px] px-4 py-24 md:px-6">
         <div className="grid gap-12 md:grid-cols-3">
           {[
             {
@@ -96,7 +96,7 @@ export default function HomePage() {
       </section>
 
       {/* Bento Feature Grid */}
-      <section id="agents" className="mx-auto max-w-6xl px-4 pb-24 md:px-6">
+      <section id="agents" className="mx-auto max-w-[1400px] px-4 pb-24 md:px-6">
         {/* Row 1 */}
         <div className="grid gap-4 md:grid-cols-3">
           {/* Large card — 2/3 */}
@@ -163,7 +163,7 @@ export default function HomePage() {
       </section>
 
       {/* CTA Section */}
-      <section className="mx-auto max-w-6xl px-4 pb-32 md:px-6">
+      <section className="mx-auto max-w-[1400px] px-4 pb-32 md:px-6">
         <div className="relative overflow-hidden rounded-3xl border border-border/60 bg-card/20 px-8 py-16 text-center">
           {/* Top-right radial glow */}
           <div className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-[radial-gradient(circle,rgba(99,102,241,0.18),transparent_70%)]" />
