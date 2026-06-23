@@ -67,7 +67,7 @@ export default function HomePage() {
 
         {/* Headline */}
         <h1 className="marketing-fade-up max-w-3xl text-5xl font-medium tracking-[-0.03em] text-balance text-foreground md:text-7xl">
-          The simplest CMS you'll ever need
+          The simplest CMS you&apos;ll ever need
         </h1>
 
         {/* Subtext */}
