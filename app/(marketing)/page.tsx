@@ -3,6 +3,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { MarketingBackground } from "@/components/marketing/marketing-background";
 import { cn } from "@/lib/utils";
 import { DOCS_PATH, SIGN_IN_PATH } from "@/lib/routes";
+import { FORK_URL } from "@/lib/brand";
 
 export default function HomePage() {
   return (
@@ -70,8 +71,8 @@ export default function HomePage() {
                 "Content lives in your repository. Every edit is a commit. Roll back any change in seconds.",
             },
             {
-              label: "Intelligence",
-              title: "AI inside your workflow",
+              label: "AI-native",
+              title: "AI-native workflow",
               description:
                 "Claude and ChatGPT work inside your editorial flow — brainstorm, draft, iterate.",
             },
@@ -185,7 +186,7 @@ export default function HomePage() {
               Get started
             </Link>
             <Link
-              href="https://github.com/Blaise1030/pagescms"
+              href={FORK_URL}
               target="_blank"
               rel="noopener noreferrer"
               className={cn(buttonVariants({ variant: "outline", size: "lg" }))}
