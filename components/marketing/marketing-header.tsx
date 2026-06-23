@@ -20,7 +20,6 @@ const navItems = [
 
 export function MarketingHeader() {
   const pathname = usePathname();
-  const isDocs = pathname.startsWith("/docs");
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
@@ -37,10 +36,7 @@ export function MarketingHeader() {
       )}
     >
       <div
-        className={cn(
-          "mx-auto flex h-14 items-center gap-4 px-4 md:px-6",
-          isDocs ? "max-w-[1400px]" : "max-w-6xl",
-        )}
+        className="mx-auto flex h-14 max-w-[1400px] items-center gap-4 px-4 md:px-6"
       >
         <Link
           href="/"
