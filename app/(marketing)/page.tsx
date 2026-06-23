@@ -20,7 +20,7 @@ export default function HomePage() {
         </div>
 
         {/* Headline */}
-        <h1 className="marketing-fade-up marketing-fade-up-delay-1 max-w-3xl text-5xl font-bold tracking-[-0.03em] text-balance text-foreground md:text-7xl">
+        <h1 className="marketing-fade-up marketing-fade-up-delay-1 max-w-3xl text-5xl font-light tracking-[-0.03em] text-balance text-foreground md:text-7xl">
           Git-based content editing for the AI era
         </h1>
 
