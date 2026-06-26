@@ -7,6 +7,8 @@ interface __BaseEnv_Env {
 	IMAGES: ImagesBinding;
 	ASSETS: Fetcher;
 	BASE_URL: string;
+	AUTH_PRODUCTION_URL: string;
+	OAUTH_PROXY_SECRET: string;
 	ADMIN_EMAILS: string;
 	BETTER_AUTH_SECRET: string;
 	CRYPTO_KEY: string;
@@ -29,7 +31,7 @@ type StringifyValues<EnvType extends Record<string, unknown>> = {
 	[Binding in keyof EnvType]: EnvType[Binding] extends string ? EnvType[Binding] : string;
 };
 declare namespace NodeJS {
-	interface ProcessEnv extends StringifyValues<Pick<Cloudflare.Env, "BASE_URL" | "ADMIN_EMAILS" | "BETTER_AUTH_SECRET" | "CRYPTO_KEY" | "A_GITHUB_APP_ID" | "A_GITHUB_APP_NAME" | "A_GITHUB_APP_PRIVATE_KEY" | "A_GITHUB_APP_WEBHOOK_SECRET" | "A_GITHUB_APP_CLIENT_ID" | "A_GITHUB_APP_CLIENT_SECRET" | "EMAIL_FROM">> {}
+	interface ProcessEnv extends StringifyValues<Pick<Cloudflare.Env, "BASE_URL" | "AUTH_PRODUCTION_URL" | "OAUTH_PROXY_SECRET" | "ADMIN_EMAILS" | "BETTER_AUTH_SECRET" | "CRYPTO_KEY" | "A_GITHUB_APP_ID" | "A_GITHUB_APP_NAME" | "A_GITHUB_APP_PRIVATE_KEY" | "A_GITHUB_APP_WEBHOOK_SECRET" | "A_GITHUB_APP_CLIENT_ID" | "A_GITHUB_APP_CLIENT_SECRET" | "EMAIL_FROM">> {}
 }
 
 // Begin runtime types

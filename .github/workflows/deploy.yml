@@ -69,6 +69,8 @@ jobs:
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
           secrets: |
             BASE_URL
+            AUTH_PRODUCTION_URL
+            OAUTH_PROXY_SECRET
             BETTER_AUTH_SECRET
             CRYPTO_KEY
             A_GITHUB_APP_PRIVATE_KEY
@@ -88,6 +90,8 @@ jobs:
             WEBHOOK_PUSH_SCOPED_INVALIDATION_MAX_FILES
         env:
           BASE_URL: ${{ env.BASE_URL || secrets.BASE_URL }}
+          AUTH_PRODUCTION_URL: ${{ secrets.AUTH_PRODUCTION_URL || secrets.BASE_URL }}
+          OAUTH_PROXY_SECRET: ${{ secrets.OAUTH_PROXY_SECRET }}
           BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET }}
           CRYPTO_KEY: ${{ secrets.CRYPTO_KEY }}
           A_GITHUB_APP_PRIVATE_KEY: ${{ secrets.A_GITHUB_APP_PRIVATE_KEY }}

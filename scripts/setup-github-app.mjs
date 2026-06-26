@@ -141,6 +141,12 @@ async function main() {
   }
   console.log(`- User authorization callback: ${userAuthorizationCallbackUrl}`);
   console.log(`- Setup URL: ${setupUrl}`);
+  console.log(
+    "- Preview deployments: register only the production callback URL above in GitHub App settings.",
+  );
+  console.log(
+    "  Use better-auth oauth-proxy (AUTH_PRODUCTION_URL + OAUTH_PROXY_SECRET) for PR previews.",
+  );
   if (webhookEnabled) {
     console.log(`- Webhook URL: ${webhookUrl}`);
   } else {
