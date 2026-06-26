@@ -55,8 +55,12 @@ Optional but useful:
 
 ```bash
 BASE_URL=https://cms.example.com
+AUTH_PRODUCTION_URL=https://cms.example.com
+OAUTH_PROXY_SECRET=your-shared-oauth-proxy-secret
 ADMIN_EMAILS=admin@example.com
 ```
+
+`OAUTH_PROXY_SECRET` must be the same value on production, preview, and local. It lets PR preview deployments complete GitHub sign-in through the production OAuth callback URL.
 
 Generate secrets with:
 
