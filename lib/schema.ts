@@ -349,6 +349,39 @@ function safeAccess(obj: Record<string, any>, path: string) {
   }, obj);
 }
 
+type ResolveSchemaTemplateOptions = {
+  aliases?: Record<string, unknown>;
+  slugifyValues?: boolean;
+};
+
+// Resolve `{{token}}` placeholders in a schema path template
+function resolveSchemaTemplate(
+  template: string,
+  _schema: Record<string, any>,
+  values: Record<string, any>,
+  options?: ResolveSchemaTemplateOptions,
+) {
+  const { aliases = {}, slugifyValues = false } = options || {};
+
+  return template.replace(/\{\{([^}]+)\}\}/g, (_, token) => {
+    const trimmed = token.trim();
+    let value: unknown;
+
+    if (Object.prototype.hasOwnProperty.call(aliases, trimmed)) {
+      value = aliases[trimmed];
+    } else {
+      value = safeAccess(values, trimmed);
+    }
+
+    if (value == null || value === "") return "";
+
+    const stringValue = String(value);
+    return slugifyValues
+      ? slugify(stringValue, { lower: true, strict: true })
+      : stringValue;
+  });
+}
+
 // Interpolate a string with a data object, with optional prefix fallback (e.g. "fields")
 function interpolate(input: string, data: Record<string, any>, prefixFallback?: string): string {
   return input.replace(/(?<!\\)\{([^}]+)\}/g, (_, token) => {
@@ -465,5 +498,6 @@ export {
   getDateFromFilename,
   generateZodSchema,
   safeAccess,
-  interpolate
+  interpolate,
+  resolveSchemaTemplate,
 };

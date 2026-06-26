@@ -36,7 +36,7 @@ import {
 } from "@/lib/utils/file";
 import type { ApiSuccess, EntryData, EntryHistoryItem } from "@/types/api";
 import { EntryForm } from "./entry-form";
-import { PreviewPanel } from "./preview-panel";
+import { EntryPreview } from "./entry-preview";
 import { EntryHistoryBlock } from "./entry-history";
 import { SaveStatus, type SaveStatusValue } from "./save-status";
 import { DraftRestoreBanner } from "./draft-restore-banner";
@@ -81,7 +81,7 @@ import { ArrowLeft, EllipsisVertical, Lock, LockOpen, Save } from "lucide-react"
 import useSWR, { useSWRConfig } from "swr";
 import { useSidebarOptional } from "@/components/ui/sidebar";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle, usePanelRef } from "@/components/ui/resizable";
-import { getPreviewUrl } from "@/lib/preview";
+import { getPreviewDefaultOpen } from "@/lib/site";
 
 function toFormContentShape(
   contentObject: Record<string, unknown> | undefined,
@@ -169,10 +169,8 @@ export function Entry({
   const { mutate } = useSWRConfig();
 
   const router = useRouter();
-  const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const [previewFormValues, setPreviewFormValues] = useState<Record<string, unknown>>({});
-  const previewFormValuesRef = useRef<Record<string, unknown>>({});
-  const [showPreview, setShowPreview] = useState(true);
+  const [showPreview, setShowPreview] = useState(() => getPreviewDefaultOpen(config?.object));
   const [showEditor, setShowEditor] = useState(true);
   const previewPanelRef = usePanelRef();
   const editorPanelRef = usePanelRef();
@@ -186,14 +184,10 @@ export function Entry({
     return getSchemaByName(config?.object, name)
   }, [config, name]);
   const schemaType = schema?.type;
-  const previewUrl = getPreviewUrl(
-    config?.object?.siteUrl as string | undefined,
-    schema?.previewPath as string | undefined,
-  );
+  const hasPreview = Boolean(schema?.site?.path);
 
   useEffect(() => {
-    if (previewUrl) sidebar?.setOpen(false);
-  // ponytail: run once on mount only
+    if (hasPreview) sidebar?.setOpen(false);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const operations = useMemo(
@@ -639,32 +633,10 @@ export function Entry({
   }, [isBusy]);
 
   useEffect(() => {
-    if (!entryContentObject || Object.keys(previewFormValuesRef.current).length > 0) return;
-    previewFormValuesRef.current = entryContentObject as Record<string, unknown>;
+    if (!entryContentObject || Object.keys(previewFormValues).length > 0) return;
     setPreviewFormValues(entryContentObject as Record<string, unknown>);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [entryContentObject]);
-
-  useEffect(() => {
-    if (!previewUrl || !iframeRef.current?.contentWindow) return;
-    iframeRef.current.contentWindow.postMessage(
-      { type: "cms:preview", data: previewFormValues },
-      "*",
-    );
-  }, [previewFormValues, previewUrl, config?.object?.siteUrl]);
-
-  useEffect(() => {
-    if (!previewUrl) return;
-    function handleReady(event: MessageEvent) {
-      if (event.data?.type !== "cms:preview:ready") return;
-      if (!iframeRef.current?.contentWindow) return;
-      iframeRef.current.contentWindow.postMessage(
-        { type: "cms:preview", data: previewFormValuesRef.current },
-        "*",
-      );
-    }
-    window.addEventListener("message", handleReady);
-    return () => window.removeEventListener("message", handleReady);
-  }, [previewUrl]);
 
   const handleDelete = useCallback((path: string) => {
     // TODO: disable save button or freeze form while deleting?
@@ -878,7 +850,7 @@ export function Entry({
 
   const headerNode = useMemo(() => (
     <div className="flex min-w-0 items-center gap-2">
-      {previewUrl && (
+      {hasPreview && (
         <Button type="button" variant="outline" size="icon" onClick={() => router.back()} aria-label="Back">
           <ArrowLeft className="size-4" />
         </Button>
@@ -948,7 +920,7 @@ export function Entry({
         </div>
       )}
     </div>
-  ), [activeTab, breadcrumbNode, canDelete, canRename, filenameChanged, filenameFieldMode, filenameValue, handleDelete, handleRename, hasRegisteredChanges, headerActionsNode, headerMeta, isBusy, isFilenameUnlocked, isFormDirty, name, path, previewUrl, router, saveStatus, schemaType, sha, showEditor, showFilenameField, showHeaderActions, showPreview]);
+  ), [activeTab, breadcrumbNode, canDelete, canRename, filenameChanged, filenameFieldMode, filenameValue, handleDelete, handleRename, hasPreview, hasRegisteredChanges, headerActionsNode, headerMeta, isBusy, isFilenameUnlocked, isFormDirty, name, path, router, saveStatus, schemaType, sha, showEditor, showFilenameField, showHeaderActions, showPreview]);
 
   useRepoHeader({ header: headerNode });
 
@@ -1165,10 +1137,9 @@ export function Entry({
                 await setFileDraft(key, content);
               }
             } : undefined}
-            onValuesChange={previewUrl ? (values) => {
-              previewFormValuesRef.current = values;
+            onValuesChange={(values) => {
               setPreviewFormValues(values);
-            } : undefined}
+            }}
           />
         </>
       )}
@@ -1178,7 +1149,7 @@ export function Entry({
   return (
     isLoading
       ? loadingSkeleton
-      : previewUrl
+      : hasPreview
         ? (
           <div className="absolute inset-0">
             <ResizablePanelGroup orientation="horizontal" className="h-full">
@@ -1200,26 +1171,11 @@ export function Entry({
                 onResize={(size) => setShowPreview(size.asPercentage > 0)}
                 className="hidden lg:flex flex-1 flex-col"
               >
-                <PreviewPanel
-                  previewUrl={previewUrl}
-                  formValues={previewFormValues}
-                  iframeRef={iframeRef}
-                  showEditor={showEditor}
-                  onToggleEditor={() => {
-                    if (showEditor) {
-                      editorPanelRef.current?.collapse();
-                    } else {
-                      editorPanelRef.current?.expand();
-                    }
-                  }}
-                  onLoad={() => {
-                    if (iframeRef.current?.contentWindow) {
-                      iframeRef.current.contentWindow.postMessage(
-                        { type: "cms:preview", data: previewFormValuesRef.current },
-                        "*",
-                      );
-                    }
-                  }}
+                <EntryPreview
+                  fields={entryFields}
+                  path={path}
+                  schema={schema}
+                  values={previewFormValues}
                 />
               </ResizablePanel>
             </ResizablePanelGroup>
