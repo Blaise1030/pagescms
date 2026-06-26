@@ -3,7 +3,7 @@ name: Deploy
 on:
   workflow_call:
     inputs:
-      worker-name:
+      preview-alias:
         type: string
         default: ''
       run-migrations:
@@ -53,9 +53,9 @@ jobs:
 
       - name: Set BASE_URL for preview
         id: set-url
-        if: ${{ inputs.worker-name != '' }}
+        if: ${{ inputs.preview-alias != '' }}
         run: |
-          URL="https://${{ inputs.worker-name }}.nocodemonkeys1.workers.dev"
+          URL="https://${{ inputs.preview-alias }}-pagescms.nocodemonkeys1.workers.dev"
           echo "BASE_URL=$URL" >> $GITHUB_ENV
           echo "deployment-url=$URL" >> $GITHUB_OUTPUT
 
@@ -65,7 +65,7 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: deploy${{ inputs.worker-name != '' && format(' --name {0}', inputs.worker-name) || '' }}
+          command: ${{ inputs.preview-alias != '' && format('versions upload --preview-alias {0}', inputs.preview-alias) || 'deploy' }}
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
           secrets: |
             BASE_URL

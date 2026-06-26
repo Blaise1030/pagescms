@@ -20,7 +20,7 @@ jobs:
     uses: ./.github/workflows/deploy.yml
     secrets: inherit
     with:
-      worker-name: pagescms-pr-${{ github.event.pull_request.number }}
+      preview-alias: pr-${{ github.event.pull_request.number }}
       environment: preview
 
   comment:
@@ -33,18 +33,18 @@ jobs:
         uses: actions/github-script@v7
         env:
           DEPLOYMENT_URL: ${{ needs.deploy.outputs.deployment-url }}
-          PREVIEW_WORKER_NAME: pagescms-pr-${{ github.event.pull_request.number }}
+          PREVIEW_ALIAS: pr-${{ github.event.pull_request.number }}
         with:
           script: |
             const deploymentUrl = process.env.DEPLOYMENT_URL;
-            const workerName = process.env.PREVIEW_WORKER_NAME;
+            const previewAlias = process.env.PREVIEW_ALIAS;
             const sha = context.payload.pull_request.head.sha.slice(0, 7);
 
             const body = [
               '## Preview deployment',
               '',
               `**URL:** ${deploymentUrl}`,
-              `**Worker:** \`${workerName}\``,
+              `**Preview alias:** \`${previewAlias}\` (on \`pagescms\`)`,
               `**Commit:** \`${sha}\``,
               '',
               '_Updated on each push to this PR._',

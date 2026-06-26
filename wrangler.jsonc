@@ -1,6 +1,7 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "pagescms",
+  "preview_urls": true,
   "compatibility_date": "2026-06-20",
   "compatibility_flags": [
     "nodejs_compat"
