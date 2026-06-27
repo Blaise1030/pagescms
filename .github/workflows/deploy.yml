@@ -6,6 +6,9 @@ on:
       preview-alias:
         type: string
         default: ''
+      staging-deploy:
+        type: boolean
+        default: false
       run-migrations:
         type: boolean
         default: false
@@ -23,7 +26,7 @@ jobs:
     environment: ${{ inputs.environment }}
     runs-on: ubuntu-latest
     outputs:
-      deployment-url: ${{ steps.set-url.outputs.deployment-url || steps.deploy.outputs.deployment-url }}
+      deployment-url: ${{ steps.set-url.outputs.deployment-url || steps.set-staging-url.outputs.deployment-url || steps.deploy.outputs.deployment-url }}
     steps:
       - uses: actions/checkout@v4
 
@@ -51,11 +54,19 @@ jobs:
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: d1 migrations apply pagescms --remote
 
+      - name: Set BASE_URL for staging
+        id: set-staging-url
+        if: ${{ inputs.staging-deploy }}
+        run: |
+          URL="https://pagescms-staging.nocodemonkeys1.workers.dev"
+          echo "BASE_URL=$URL" >> $GITHUB_ENV
+          echo "deployment-url=$URL" >> $GITHUB_OUTPUT
+
       - name: Set BASE_URL for preview
         id: set-url
         if: ${{ inputs.preview-alias != '' }}
         run: |
-          URL="https://${{ inputs.preview-alias }}-pagescms.nocodemonkeys1.workers.dev"
+          URL="https://${{ inputs.preview-alias }}-pagescms-staging.nocodemonkeys1.workers.dev"
           echo "BASE_URL=$URL" >> $GITHUB_ENV
           echo "deployment-url=$URL" >> $GITHUB_OUTPUT
 
@@ -65,7 +76,7 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: ${{ inputs.preview-alias != '' && format('versions upload --preview-alias {0}', inputs.preview-alias) || 'deploy' }}
+          command: ${{ inputs.preview-alias != '' && format('versions upload --env staging --preview-alias {0}', inputs.preview-alias) || (inputs.staging-deploy && 'deploy --env staging' || 'deploy') }}
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
           secrets: |
             BASE_URL
