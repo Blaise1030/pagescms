@@ -21,6 +21,9 @@ export const auth = betterAuth({
     "http://localhost:3000",
     "https://pagescms-staging.nocodemonkeys1.workers.dev",
     "https://pr-*-pagescms-staging.nocodemonkeys1.workers.dev",
+    ...(process.env.AUTH_PRODUCTION_URL?.trim()
+      ? [getProductionUrl()]
+      : []),
   ],
   secret: (process.env.AUTH_SECRET || process.env.BETTER_AUTH_SECRET) as string,
   user: {

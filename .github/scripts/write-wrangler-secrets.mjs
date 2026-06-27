@@ -23,8 +23,34 @@ const SECRET_NAMES = [
   'WEBHOOK_PUSH_SCOPED_INVALIDATION_MAX_FILES',
 ];
 
-const secrets = Object.fromEntries(
-  SECRET_NAMES.map((name) => [name, process.env[name]]),
-);
+export function writeWranglerSecrets(overrides = {}) {
+  const secrets = Object.fromEntries(
+    SECRET_NAMES.map((name) => {
+      const value = overrides[name] ?? process.env[name];
+      return value === undefined || value === '' ? null : [name, value];
+    }).filter(Boolean),
+  );
 
-fs.writeFileSync('wrangler-secrets.json', JSON.stringify(secrets));
+  if (!secrets.AUTH_PRODUCTION_URL) {
+    throw new Error(
+      'AUTH_PRODUCTION_URL is required for deploy secrets (production OAuth callback URL).',
+    );
+  }
+
+  if (!secrets.BASE_URL) {
+    throw new Error('BASE_URL is required for deploy secrets.');
+  }
+
+  if (!secrets.OAUTH_PROXY_SECRET && secrets.BASE_URL !== secrets.AUTH_PRODUCTION_URL) {
+    throw new Error(
+      'OAUTH_PROXY_SECRET is required when BASE_URL differs from AUTH_PRODUCTION_URL (preview/staging auth).',
+    );
+  }
+
+  fs.writeFileSync('wrangler-secrets.json', JSON.stringify(secrets));
+  return secrets;
+}
+
+if (process.argv[1]?.endsWith('write-wrangler-secrets.mjs')) {
+  writeWranglerSecrets();
+}

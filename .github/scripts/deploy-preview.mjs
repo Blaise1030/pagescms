@@ -1,5 +1,6 @@
 import { execSync } from 'node:child_process';
 import { appendFileSync } from 'node:fs';
+import { writeWranglerSecrets } from './write-wrangler-secrets.mjs';
 
 const alias = process.argv[2];
 if (!alias) {
@@ -29,6 +30,16 @@ function hasPreviewUrl(output) {
   return /Version Preview Alias URL:|Version Preview URL:/.test(output);
 }
 
+function parseDeploymentUrl(output) {
+  const aliasMatch = output.match(
+    /Version Preview Alias URL: (https:\/\/\S+)/,
+  );
+  const versionMatch = output.match(
+    /Version Preview URL: (https:\/\/\S+)/,
+  );
+  return aliasMatch?.[1] ?? versionMatch?.[1] ?? fallbackUrl;
+}
+
 let uploadOutput = uploadVersion();
 
 if (!hasPreviewUrl(uploadOutput)) {
@@ -41,22 +52,28 @@ if (!hasPreviewUrl(uploadOutput)) {
   uploadOutput = uploadVersion();
 }
 
+const deploymentUrl = parseDeploymentUrl(uploadOutput).replace(/\/$/, '');
 console.log(uploadOutput);
 
-const aliasMatch = uploadOutput.match(
-  /Version Preview Alias URL: (https:\/\/\S+)/,
-);
-const versionMatch = uploadOutput.match(
-  /Version Preview URL: (https:\/\/\S+)/,
-);
-const deploymentUrl =
-  aliasMatch?.[1] ?? versionMatch?.[1] ?? fallbackUrl;
+writeWranglerSecrets({
+  BASE_URL: deploymentUrl,
+  AUTH_PRODUCTION_URL: process.env.AUTH_PRODUCTION_URL,
+});
+console.log(`Updated secrets for BASE_URL=${deploymentUrl}`);
+
+uploadOutput = uploadVersion();
+console.log(uploadOutput);
+
+const finalDeploymentUrl = parseDeploymentUrl(uploadOutput).replace(/\/$/, '');
 
 if (process.env.GITHUB_OUTPUT) {
-  appendFileSync(process.env.GITHUB_OUTPUT, `deployment-url=${deploymentUrl}\n`);
+  appendFileSync(
+    process.env.GITHUB_OUTPUT,
+    `deployment-url=${finalDeploymentUrl}\n`,
+  );
 }
 
-console.log(`Preview URL: ${deploymentUrl}`);
+console.log(`Preview URL: ${finalDeploymentUrl}`);
 
 if (!hasPreviewUrl(uploadOutput)) {
   console.error(

@@ -27,7 +27,6 @@ jobs:
     runs-on: ubuntu-latest
     env:
       AUTH_PRODUCTION_URL: ${{ secrets.AUTH_PRODUCTION_URL || secrets.BASE_URL }}
-      BASE_URL: ${{ secrets.BASE_URL }}
       OAUTH_PROXY_SECRET: ${{ secrets.OAUTH_PROXY_SECRET }}
       BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET }}
       CRYPTO_KEY: ${{ secrets.CRYPTO_KEY }}
@@ -47,7 +46,7 @@ jobs:
       WEBHOOK_PUSH_INCREMENTAL_MAX_FILES: ${{ secrets.WEBHOOK_PUSH_INCREMENTAL_MAX_FILES }}
       WEBHOOK_PUSH_SCOPED_INVALIDATION_MAX_FILES: ${{ secrets.WEBHOOK_PUSH_SCOPED_INVALIDATION_MAX_FILES }}
     outputs:
-      deployment-url: ${{ steps.deploy-preview.outputs.deployment-url || steps.set-url.outputs.deployment-url || steps.set-staging-url.outputs.deployment-url || steps.deploy.outputs.deployment-url }}
+      deployment-url: ${{ steps.deploy-preview.outputs.deployment-url || steps.set-staging-url.outputs.deployment-url || steps.deploy.outputs.deployment-url }}
     steps:
       - uses: actions/checkout@v4
 
@@ -80,17 +79,12 @@ jobs:
         if: ${{ inputs.staging-deploy }}
         run: |
           URL="https://pagescms-staging.nocodemonkeys1.workers.dev"
-          echo "BASE_URL=$URL" >> $GITHUB_ENV
           echo "deployment-url=$URL" >> $GITHUB_OUTPUT
 
-      - name: Set BASE_URL for preview
-        id: set-url
-        if: ${{ inputs.preview-alias != '' }}
-        run: |
-          URL="https://${{ inputs.preview-alias }}-pagescms-staging.nocodemonkeys1.workers.dev"
-          echo "BASE_URL=$URL" >> $GITHUB_ENV
-
       - name: Write wrangler secrets file
+        env:
+          BASE_URL: ${{ inputs.preview-alias != '' && format('https://{0}-pagescms-staging.nocodemonkeys1.workers.dev', inputs.preview-alias) || (inputs.staging-deploy && 'https://pagescms-staging.nocodemonkeys1.workers.dev' || secrets.BASE_URL) }}
+          AUTH_PRODUCTION_URL: ${{ secrets.AUTH_PRODUCTION_URL || secrets.BASE_URL }}
         run: node .github/scripts/write-wrangler-secrets.mjs
 
       - name: Deploy preview to staging

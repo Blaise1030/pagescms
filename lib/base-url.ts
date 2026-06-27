@@ -22,5 +22,15 @@ export const getProductionUrl = () => {
   if (productionUrl) {
     return normalizeUrl(productionUrl);
   }
-  return getBaseUrl();
+
+  const baseUrl = getBaseUrl();
+  const isPreviewHost = /-pagescms-staging\./.test(baseUrl);
+
+  if (process.env.NODE_ENV === "production" && isPreviewHost) {
+    throw new Error(
+      "AUTH_PRODUCTION_URL is required on preview deployments. Set it to the production CMS URL.",
+    );
+  }
+
+  return baseUrl;
 };
