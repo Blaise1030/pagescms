@@ -39,6 +39,19 @@ Rebuilds automatically on file changes.
 
 Activate the admin bar with `?pagescms` or `#pagescms` in the URL.
 
+## Preview bridge protocol
+
+When the page is loaded inside the CMS preview iframe, the widget handles these `postMessage` events:
+
+| Event | Direction | Purpose |
+| --- | --- | --- |
+| `pagescms:preview:hello` | CMS → site | Poll until bridge is ready |
+| `pagescms:preview:ready` | Site → CMS | Bridge acknowledged |
+| `pagescms:preview:update` | CMS → site | `{ bindings: [{ target, bind, value }] }` |
+| `pagescms:preview:debug` | Site → CMS | Target-not-found warnings |
+
+Bind types: `text`, `html`, `value`, `src`, `href`, `checked`, `content`. Array values update repeated DOM targets (use `{n}` in selectors for indexed elements).
+
 ## Ported from
 
 Upstream reference: [hunvreus/pagescms `feature/preview`](https://github.com/hunvreus/pagescms/blob/feature/preview/public/pagescms-site.js)
