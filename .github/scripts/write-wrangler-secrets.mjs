@@ -31,14 +31,12 @@ export function writeWranglerSecrets(overrides = {}) {
     }).filter(Boolean),
   );
 
-  if (!secrets.AUTH_PRODUCTION_URL) {
-    throw new Error(
-      'AUTH_PRODUCTION_URL is required for deploy secrets (production OAuth callback URL).',
-    );
-  }
-
   if (!secrets.BASE_URL) {
     throw new Error('BASE_URL is required for deploy secrets.');
+  }
+
+  if (!secrets.AUTH_PRODUCTION_URL) {
+    secrets.AUTH_PRODUCTION_URL = secrets.BASE_URL;
   }
 
   if (!secrets.OAUTH_PROXY_SECRET && secrets.BASE_URL !== secrets.AUTH_PRODUCTION_URL) {

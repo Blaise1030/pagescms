@@ -1,0 +1,25 @@
+name: Deploy Production
+
+on:
+  workflow_dispatch:
+    inputs:
+      run-migrations:
+        description: Apply D1 migrations before deploy
+        type: boolean
+        default: true
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  deployments: write
+
+jobs:
+  deploy:
+    uses: ./.github/workflows/deploy.yml
+    secrets: inherit
+    with:
+      run-migrations: ${{ inputs.run-migrations }}
+      environment: production

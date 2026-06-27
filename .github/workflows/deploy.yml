@@ -46,7 +46,7 @@ jobs:
       WEBHOOK_PUSH_INCREMENTAL_MAX_FILES: ${{ secrets.WEBHOOK_PUSH_INCREMENTAL_MAX_FILES }}
       WEBHOOK_PUSH_SCOPED_INVALIDATION_MAX_FILES: ${{ secrets.WEBHOOK_PUSH_SCOPED_INVALIDATION_MAX_FILES }}
     outputs:
-      deployment-url: ${{ steps.deploy-preview.outputs.deployment-url || steps.set-staging-url.outputs.deployment-url || steps.deploy.outputs.deployment-url }}
+      deployment-url: ${{ steps.deploy-preview.outputs.deployment-url || steps.set-staging-url.outputs.deployment-url || steps.set-production-url.outputs.deployment-url }}
     steps:
       - uses: actions/checkout@v4
 
@@ -81,10 +81,14 @@ jobs:
           URL="https://pagescms-staging.nocodemonkeys1.workers.dev"
           echo "deployment-url=$URL" >> $GITHUB_OUTPUT
 
+      - name: Set deployment URL for production
+        id: set-production-url
+        if: ${{ inputs.preview-alias == '' && !inputs.staging-deploy }}
+        run: echo "deployment-url=${{ secrets.BASE_URL }}" >> $GITHUB_OUTPUT
+
       - name: Write wrangler secrets file
         env:
           BASE_URL: ${{ inputs.preview-alias != '' && format('https://{0}-pagescms-staging.nocodemonkeys1.workers.dev', inputs.preview-alias) || (inputs.staging-deploy && 'https://pagescms-staging.nocodemonkeys1.workers.dev' || secrets.BASE_URL) }}
-          AUTH_PRODUCTION_URL: ${{ secrets.AUTH_PRODUCTION_URL || secrets.BASE_URL }}
         run: node .github/scripts/write-wrangler-secrets.mjs
 
       - name: Deploy preview to staging
@@ -95,12 +99,10 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: node .github/scripts/deploy-preview.mjs ${{ inputs.preview-alias }}
 
-      - name: Deploy to Cloudflare Workers
-        id: deploy
+      - name: Deploy worker
         if: ${{ inputs.preview-alias == '' }}
-        uses: cloudflare/wrangler-action@v4
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: ${{ inputs.staging-deploy && 'deploy --env staging --name pagescms-staging --secrets-file wrangler-secrets.json' || 'deploy --secrets-file wrangler-secrets.json' }}
-          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          BASE_URL: ${{ inputs.staging-deploy && 'https://pagescms-staging.nocodemonkeys1.workers.dev' || secrets.BASE_URL }}
+        run: node .github/scripts/deploy-worker.mjs ${{ inputs.staging-deploy && '--staging' || '' }}
