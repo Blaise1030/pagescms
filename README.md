@@ -62,6 +62,12 @@ ADMIN_EMAILS=admin@example.com
 
 `OAUTH_PROXY_SECRET` must be the same value on production, preview, and local. It lets PR preview deployments complete GitHub sign-in through the production OAuth callback URL.
 
+On preview workers, `BASE_URL` is the preview hostname (e.g. `https://pr-25-pagescms-staging.<subdomain>.workers.dev`) while `AUTH_PRODUCTION_URL` must stay the **production** CMS URL. GitHub App **Callback URL** must register only the production callback:
+
+`https://pagescms.nocodemonkeys1.workers.dev/api/auth/callback/github`
+
+(Replace with your production `AUTH_PRODUCTION_URL` + `/api/auth/callback/github`.)
+
 Generate secrets with:
 
 ```bash

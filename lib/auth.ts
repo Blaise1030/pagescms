@@ -4,7 +4,8 @@ import { nextCookies } from "better-auth/next-js";
 import { emailOTP, oAuthProxy } from "better-auth/plugins";
 import { db } from "@/db";
 import * as schema from "@/db/schema";
-import { getBaseUrl, getProductionUrl } from "@/lib/base-url";
+import { getBaseUrl, getGithubOAuthRedirectUri, getProductionUrl } from "@/lib/base-url";
+import { oauthProductionRedirect } from "@/lib/auth-oauth-preview";
 import { APP_NAME } from "@/lib/brand";
 import { repairLegacyGithubStubOnLogin } from "@/lib/github-legacy-stub-repair";
 import { sendEmail } from "@/lib/mailer";
@@ -12,8 +13,6 @@ import { syncGithubProfileOnLogin } from "@/lib/github-account";
 import { bindCollaboratorInvitesToUser } from "@/lib/collaborator-access";
 import { LoginEmailTemplate } from "@/components/email/login";
 import { render } from "@react-email/render";
-
-const productionUrl = getProductionUrl();
 
 export const auth = betterAuth({
   baseURL: getBaseUrl(),
@@ -48,7 +47,7 @@ export const auth = betterAuth({
     github: {
       clientId: process.env.A_GITHUB_APP_CLIENT_ID as string,
       clientSecret: process.env.A_GITHUB_APP_CLIENT_SECRET as string,
-      redirectURI: `${productionUrl}/api/auth/callback/github`,
+      redirectURI: getGithubOAuthRedirectUri(),
       overrideUserInfoOnSignIn: false,
       mapProfileToUser: (profile) => ({
         name: profile.name ?? profile.login,
@@ -185,8 +184,9 @@ export const auth = betterAuth({
   },
   plugins: [
     nextCookies(),
+    oauthProductionRedirect(),
     oAuthProxy({
-      productionURL: productionUrl,
+      productionURL: getProductionUrl(),
       secret: process.env.OAUTH_PROXY_SECRET,
     }),
     emailOTP({
