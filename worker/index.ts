@@ -50,6 +50,71 @@ interface ExecutionContext {
   passThroughOnException(): void;
 }
 
+const WIDGET_PATH = "/pagescms-widget.js";
+
+function widgetCorsHeaders(): HeadersInit {
+  return {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "GET, HEAD, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type",
+  };
+}
+
+function withWidgetHeaders(response: Response): Response {
+  const headers = new Headers(response.headers);
+  headers.set("Content-Type", "application/javascript; charset=utf-8");
+  headers.set("Cache-Control", "public, max-age=3600");
+  for (const [key, value] of Object.entries(widgetCorsHeaders())) {
+    headers.set(key, value);
+  }
+
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
+}
+
+async function serveWidget(
+  request: Request,
+  env: Env,
+): Promise<Response | null> {
+  const url = new URL(request.url);
+  if (url.pathname !== WIDGET_PATH) {
+    return null;
+  }
+
+  if (request.method === "OPTIONS") {
+    return new Response(null, {
+      status: 204,
+      headers: widgetCorsHeaders(),
+    });
+  }
+
+  if (request.method !== "GET" && request.method !== "HEAD") {
+    return new Response("Method Not Allowed", {
+      status: 405,
+      headers: widgetCorsHeaders(),
+    });
+  }
+
+  const response = await env.ASSETS.fetch(
+    new Request(new URL(WIDGET_PATH, request.url), {
+      method: request.method,
+      headers: request.headers,
+    }),
+  );
+
+  if (response.status === 404) {
+    return new Response("Not Found", {
+      status: 404,
+      headers: widgetCorsHeaders(),
+    });
+  }
+
+  return withWidgetHeaders(response);
+}
+
 // Image security config. SVG sources with .svg extension auto-skip the
 // optimization endpoint on the client side (served directly, no proxy).
 // To route SVGs through the optimizer (with security headers), set
@@ -63,6 +128,11 @@ export default {
     ctx: ExecutionContext,
   ): Promise<Response> {
     const url = new URL(request.url);
+
+    const widgetResponse = await serveWidget(request, env);
+    if (widgetResponse) {
+      return widgetResponse;
+    }
 
     // Image optimization via Cloudflare Images binding.
     // The parseImageParams validation inside handleImageOptimization

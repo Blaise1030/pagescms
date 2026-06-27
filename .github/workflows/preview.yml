@@ -22,7 +22,6 @@ jobs:
     secrets: inherit
     with:
       preview-alias: pr-${{ github.event.pull_request.number }}
-      widget-worker-name: pagescms-widget-pr-${{ github.event.pull_request.number }}
       environment: preview
 
   comment:
@@ -36,15 +35,12 @@ jobs:
         uses: actions/github-script@v7
         env:
           DEPLOYMENT_URL: ${{ needs.deploy.outputs.deployment-url }}
-          WIDGET_URL: ${{ needs.deploy.outputs.widget-deployment-url }}
           PREVIEW_ALIAS: pr-${{ github.event.pull_request.number }}
-          WIDGET_WORKER_NAME: pagescms-widget-pr-${{ github.event.pull_request.number }}
         with:
           script: |
-            const deploymentUrl = process.env.DEPLOYMENT_URL;
-            const widgetUrl = process.env.WIDGET_URL;
+            const deploymentUrl = process.env.DEPLOYMENT_URL.replace(/\/$/, '');
+            const widgetUrl = `${deploymentUrl}/pagescms-widget.js`;
             const previewAlias = process.env.PREVIEW_ALIAS;
-            const widgetWorkerName = process.env.WIDGET_WORKER_NAME;
             const sha = context.payload.pull_request.head.sha.slice(0, 7);
 
             const body = [
@@ -53,7 +49,6 @@ jobs:
               `**CMS URL:** ${deploymentUrl}`,
               `**Preview alias:** \`${previewAlias}\` (on \`pagescms-staging\`)`,
               `**Widget script:** ${widgetUrl}`,
-              `**Widget worker:** \`${widgetWorkerName}\``,
               `**Commit:** \`${sha}\``,
               '',
               '_Updated on each push to this PR._',

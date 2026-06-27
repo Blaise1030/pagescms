@@ -6,9 +6,6 @@ on:
       preview-alias:
         type: string
         default: ''
-      widget-worker-name:
-        type: string
-        default: ''
       staging-deploy:
         type: boolean
         default: false
@@ -22,17 +19,34 @@ on:
       deployment-url:
         description: Cloudflare deployment URL
         value: ${{ jobs.deploy.outputs.deployment-url }}
-      widget-deployment-url:
-        description: Cloudflare widget script URL
-        value: ${{ jobs.deploy-widget.outputs.widget-deployment-url }}
 
 
 jobs:
   deploy:
     environment: ${{ inputs.environment }}
     runs-on: ubuntu-latest
+    env:
+      AUTH_PRODUCTION_URL: ${{ secrets.AUTH_PRODUCTION_URL || secrets.BASE_URL }}
+      OAUTH_PROXY_SECRET: ${{ secrets.OAUTH_PROXY_SECRET }}
+      BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET }}
+      CRYPTO_KEY: ${{ secrets.CRYPTO_KEY }}
+      A_GITHUB_APP_PRIVATE_KEY: ${{ secrets.A_GITHUB_APP_PRIVATE_KEY }}
+      A_GITHUB_APP_CLIENT_SECRET: ${{ secrets.A_GITHUB_APP_CLIENT_SECRET }}
+      ADMIN_EMAILS: ${{ secrets.ADMIN_EMAILS }}
+      A_GITHUB_APP_ID: ${{ secrets.A_GITHUB_APP_ID }}
+      A_GITHUB_APP_NAME: ${{ secrets.A_GITHUB_APP_NAME }}
+      A_GITHUB_APP_CLIENT_ID: ${{ secrets.A_GITHUB_APP_CLIENT_ID }}
+      EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
+      CACHE_CHECK_MIN: ${{ secrets.CACHE_CHECK_MIN }}
+      CONFIG_CHECK_MIN: ${{ secrets.CONFIG_CHECK_MIN }}
+      FILE_TTL_MIN: ${{ secrets.FILE_TTL_MIN }}
+      PERMISSIONS_TTL_MIN: ${{ secrets.PERMISSIONS_TTL_MIN }}
+      BRANCH_HEAD_TTL_MS: ${{ secrets.BRANCH_HEAD_TTL_MS }}
+      REPO_META_TTL_MS: ${{ secrets.REPO_META_TTL_MS }}
+      WEBHOOK_PUSH_INCREMENTAL_MAX_FILES: ${{ secrets.WEBHOOK_PUSH_INCREMENTAL_MAX_FILES }}
+      WEBHOOK_PUSH_SCOPED_INVALIDATION_MAX_FILES: ${{ secrets.WEBHOOK_PUSH_SCOPED_INVALIDATION_MAX_FILES }}
     outputs:
-      deployment-url: ${{ steps.set-url.outputs.deployment-url || steps.set-staging-url.outputs.deployment-url || steps.set-production-url.outputs.deployment-url }}
+      deployment-url: ${{ steps.deploy-preview.outputs.deployment-url || steps.set-staging-url.outputs.deployment-url || steps.set-production-url.outputs.deployment-url }}
     steps:
       - uses: actions/checkout@v4
 
@@ -67,160 +81,28 @@ jobs:
           URL="https://pagescms-staging.nocodemonkeys1.workers.dev"
           echo "deployment-url=$URL" >> $GITHUB_OUTPUT
 
-      - name: Set BASE_URL for preview
-        id: set-url
-        if: ${{ inputs.preview-alias != '' }}
-        run: |
-          URL="https://${{ inputs.preview-alias }}-pagescms-staging.nocodemonkeys1.workers.dev"
-          echo "BASE_URL=$URL" >> $GITHUB_ENV
-          echo "deployment-url=$URL" >> $GITHUB_OUTPUT
-
       - name: Set deployment URL for production
         id: set-production-url
         if: ${{ inputs.preview-alias == '' && !inputs.staging-deploy }}
         run: echo "deployment-url=${{ secrets.BASE_URL }}" >> $GITHUB_OUTPUT
 
       - name: Write wrangler secrets file
-        if: ${{ inputs.preview-alias == '' }}
         env:
-          BASE_URL: ${{ inputs.staging-deploy && 'https://pagescms-staging.nocodemonkeys1.workers.dev' || secrets.BASE_URL }}
-          AUTH_PRODUCTION_URL: ${{ secrets.AUTH_PRODUCTION_URL || secrets.BASE_URL }}
-          OAUTH_PROXY_SECRET: ${{ secrets.OAUTH_PROXY_SECRET }}
-          BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET }}
-          CRYPTO_KEY: ${{ secrets.CRYPTO_KEY }}
-          A_GITHUB_APP_PRIVATE_KEY: ${{ secrets.A_GITHUB_APP_PRIVATE_KEY }}
-          A_GITHUB_APP_CLIENT_SECRET: ${{ secrets.A_GITHUB_APP_CLIENT_SECRET }}
-          ADMIN_EMAILS: ${{ secrets.ADMIN_EMAILS }}
-          A_GITHUB_APP_ID: ${{ secrets.A_GITHUB_APP_ID }}
-          A_GITHUB_APP_NAME: ${{ secrets.A_GITHUB_APP_NAME }}
-          A_GITHUB_APP_CLIENT_ID: ${{ secrets.A_GITHUB_APP_CLIENT_ID }}
-          EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
-          CACHE_CHECK_MIN: ${{ secrets.CACHE_CHECK_MIN }}
-          CONFIG_CHECK_MIN: ${{ secrets.CONFIG_CHECK_MIN }}
-          FILE_TTL_MIN: ${{ secrets.FILE_TTL_MIN }}
-          PERMISSIONS_TTL_MIN: ${{ secrets.PERMISSIONS_TTL_MIN }}
-          BRANCH_HEAD_TTL_MS: ${{ secrets.BRANCH_HEAD_TTL_MS }}
-          REPO_META_TTL_MS: ${{ secrets.REPO_META_TTL_MS }}
-          WEBHOOK_PUSH_INCREMENTAL_MAX_FILES: ${{ secrets.WEBHOOK_PUSH_INCREMENTAL_MAX_FILES }}
-          WEBHOOK_PUSH_SCOPED_INVALIDATION_MAX_FILES: ${{ secrets.WEBHOOK_PUSH_SCOPED_INVALIDATION_MAX_FILES }}
+          BASE_URL: ${{ inputs.preview-alias != '' && format('https://{0}-pagescms-staging.nocodemonkeys1.workers.dev', inputs.preview-alias) || (inputs.staging-deploy && 'https://pagescms-staging.nocodemonkeys1.workers.dev' || secrets.BASE_URL) }}
         run: node .github/scripts/write-wrangler-secrets.mjs
 
+      - name: Deploy preview to staging
+        id: deploy-preview
+        if: ${{ inputs.preview-alias != '' }}
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: node .github/scripts/deploy-preview.mjs ${{ inputs.preview-alias }}
+
       - name: Deploy worker
-        id: deploy
         if: ${{ inputs.preview-alias == '' }}
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           BASE_URL: ${{ inputs.staging-deploy && 'https://pagescms-staging.nocodemonkeys1.workers.dev' || secrets.BASE_URL }}
-          AUTH_PRODUCTION_URL: ${{ secrets.AUTH_PRODUCTION_URL || secrets.BASE_URL }}
-          OAUTH_PROXY_SECRET: ${{ secrets.OAUTH_PROXY_SECRET }}
-          BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET }}
-          CRYPTO_KEY: ${{ secrets.CRYPTO_KEY }}
-          A_GITHUB_APP_PRIVATE_KEY: ${{ secrets.A_GITHUB_APP_PRIVATE_KEY }}
-          A_GITHUB_APP_CLIENT_SECRET: ${{ secrets.A_GITHUB_APP_CLIENT_SECRET }}
-          ADMIN_EMAILS: ${{ secrets.ADMIN_EMAILS }}
-          A_GITHUB_APP_ID: ${{ secrets.A_GITHUB_APP_ID }}
-          A_GITHUB_APP_NAME: ${{ secrets.A_GITHUB_APP_NAME }}
-          A_GITHUB_APP_CLIENT_ID: ${{ secrets.A_GITHUB_APP_CLIENT_ID }}
-          EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
-          CACHE_CHECK_MIN: ${{ secrets.CACHE_CHECK_MIN }}
-          CONFIG_CHECK_MIN: ${{ secrets.CONFIG_CHECK_MIN }}
-          FILE_TTL_MIN: ${{ secrets.FILE_TTL_MIN }}
-          PERMISSIONS_TTL_MIN: ${{ secrets.PERMISSIONS_TTL_MIN }}
-          BRANCH_HEAD_TTL_MS: ${{ secrets.BRANCH_HEAD_TTL_MS }}
-          REPO_META_TTL_MS: ${{ secrets.REPO_META_TTL_MS }}
-          WEBHOOK_PUSH_INCREMENTAL_MAX_FILES: ${{ secrets.WEBHOOK_PUSH_INCREMENTAL_MAX_FILES }}
-          WEBHOOK_PUSH_SCOPED_INVALIDATION_MAX_FILES: ${{ secrets.WEBHOOK_PUSH_SCOPED_INVALIDATION_MAX_FILES }}
         run: node .github/scripts/deploy-worker.mjs ${{ inputs.staging-deploy && '--staging' || '' }}
-
-      - name: Deploy preview version
-        id: deploy-preview
-        if: ${{ inputs.preview-alias != '' }}
-        uses: cloudflare/wrangler-action@v4
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: versions upload --env staging --name pagescms-staging --preview-alias ${{ inputs.preview-alias }}
-          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
-          secrets: |
-            BASE_URL
-            AUTH_PRODUCTION_URL
-            OAUTH_PROXY_SECRET
-            BETTER_AUTH_SECRET
-            CRYPTO_KEY
-            A_GITHUB_APP_PRIVATE_KEY
-            A_GITHUB_APP_CLIENT_SECRET
-            ADMIN_EMAILS
-            A_GITHUB_APP_ID
-            A_GITHUB_APP_NAME
-            A_GITHUB_APP_CLIENT_ID
-            EMAIL_FROM
-            CACHE_CHECK_MIN
-            CONFIG_CHECK_MIN
-            FILE_TTL_MIN
-            PERMISSIONS_TTL_MIN
-            BRANCH_HEAD_TTL_MS
-            REPO_META_TTL_MS
-            WEBHOOK_PUSH_INCREMENTAL_MAX_FILES
-            WEBHOOK_PUSH_SCOPED_INVALIDATION_MAX_FILES
-        env:
-          BASE_URL: ${{ env.BASE_URL || secrets.BASE_URL }}
-          AUTH_PRODUCTION_URL: ${{ secrets.AUTH_PRODUCTION_URL || secrets.BASE_URL }}
-          OAUTH_PROXY_SECRET: ${{ secrets.OAUTH_PROXY_SECRET }}
-          BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET }}
-          CRYPTO_KEY: ${{ secrets.CRYPTO_KEY }}
-          A_GITHUB_APP_PRIVATE_KEY: ${{ secrets.A_GITHUB_APP_PRIVATE_KEY }}
-          A_GITHUB_APP_CLIENT_SECRET: ${{ secrets.A_GITHUB_APP_CLIENT_SECRET }}
-          ADMIN_EMAILS: ${{ secrets.ADMIN_EMAILS }}
-          A_GITHUB_APP_ID: ${{ secrets.A_GITHUB_APP_ID }}
-          A_GITHUB_APP_NAME: ${{ secrets.A_GITHUB_APP_NAME }}
-          A_GITHUB_APP_CLIENT_ID: ${{ secrets.A_GITHUB_APP_CLIENT_ID }}
-          EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
-          CACHE_CHECK_MIN: ${{ secrets.CACHE_CHECK_MIN }}
-          CONFIG_CHECK_MIN: ${{ secrets.CONFIG_CHECK_MIN }}
-          FILE_TTL_MIN: ${{ secrets.FILE_TTL_MIN }}
-          PERMISSIONS_TTL_MIN: ${{ secrets.PERMISSIONS_TTL_MIN }}
-          BRANCH_HEAD_TTL_MS: ${{ secrets.BRANCH_HEAD_TTL_MS }}
-          REPO_META_TTL_MS: ${{ secrets.REPO_META_TTL_MS }}
-          WEBHOOK_PUSH_INCREMENTAL_MAX_FILES: ${{ secrets.WEBHOOK_PUSH_INCREMENTAL_MAX_FILES }}
-          WEBHOOK_PUSH_SCOPED_INVALIDATION_MAX_FILES: ${{ secrets.WEBHOOK_PUSH_SCOPED_INVALIDATION_MAX_FILES }}
-
-  deploy-widget:
-    environment: ${{ inputs.environment }}
-    runs-on: ubuntu-latest
-    outputs:
-      widget-deployment-url: ${{ steps.set-widget-url.outputs.widget-deployment-url }}
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: pnpm/action-setup@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22.23.0
-          cache: pnpm
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Build widget
-        run: pnpm build:widget
-
-      - name: Set widget URL
-        id: set-widget-url
-        run: |
-          if [ -n "${{ inputs.widget-worker-name }}" ]; then
-            WORKER_NAME="${{ inputs.widget-worker-name }}"
-          else
-            WORKER_NAME="pagescms-widget"
-          fi
-          echo "widget-deployment-url=https://${WORKER_NAME}.nocodemonkeys1.workers.dev/pagescms-widget.js" >> $GITHUB_OUTPUT
-
-      - name: Deploy widget to Cloudflare Workers
-        uses: cloudflare/wrangler-action@v4
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          workingDirectory: apps/pagescms-widget
-          command: deploy${{ inputs.widget-worker-name != '' && format(' --name {0}', inputs.widget-worker-name) || '' }}
-          gitHubToken: ${{ secrets.GITHUB_TOKEN }}

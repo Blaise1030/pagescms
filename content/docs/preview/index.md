@@ -7,46 +7,75 @@ description: "Set up live content preview so editors can see changes before publ
 
 Pages CMS supports live preview — editors see their content rendered in a panel as they type, without saving or publishing first.
 
-Preview works by loading your site in an iframe and sending content updates via `postMessage`. Your site listens for these messages and updates its rendered output.
+Preview loads your site in an iframe and pushes field bindings over `postMessage` using the `pagescms-widget.js` bridge script.
 
 ## How it works
 
-1. Editor opens an entry. Pages CMS loads your site's preview URL in an iframe.
-2. As the editor types, the CMS sends a `postMessage` to the iframe:
+1. Editor opens an entry. Pages CMS loads a preview URL in an iframe.
+2. The CMS sends `pagescms:preview:hello` until the site bridge is ready.
+3. The site bridge responds with `pagescms:preview:ready`.
+4. As the editor types, the CMS sends binding updates:
    ```json
-   { "type": "cms:preview", "data": { "title": "...", "body": "..." } }
+   {
+     "type": "pagescms:preview:update",
+     "bindings": [
+       { "target": "#title", "bind": "text", "value": "Hello world" }
+     ]
+   }
    ```
-3. Your site receives the message and re-renders with the new data.
-4. When the iframe is ready, it signals back:
-   ```json
-   { "type": "cms:preview:ready" }
-   ```
+
+## Site script
+
+Add `pagescms-widget.js` to your public site:
+
+```html
+<script
+  src="https://your-cms.example/pagescms-widget.js"
+  data-pagescms-origin="https://your-cms.example"
+  data-pagescms-owner="org"
+  data-pagescms-repo="repo"
+  data-pagescms-branch="main"
+></script>
+```
+
+The script also provides an admin bar (activate with `?pagescms` in the URL).
 
 ## Configuration
 
-Add `siteUrl` and `previewPath` to your `.pages.yml`:
+Add site settings and a per-collection path to `.pages.yml`:
 
 ```yaml
-object:
-  siteUrl: https://yourdomain.com
-  previewPath: /preview/{slug}
+settings:
+  site:
+    url: https://yourdomain.com
+    preview:
+      defaultOpen: true
+content:
+  - name: posts
+    site:
+      path: /blog/{{slug}}
+    fields:
+      - name: title
+        type: string
+        preview:
+          target: "#title"
+          bind: text
 ```
 
 | Key | Description |
 | --- | --- |
-| `siteUrl` | Base URL of your deployed site. |
-| `previewPath` | Path to your preview page. Use `{slug}` or any content field as a token. |
-
-The CMS constructs the preview URL as `siteUrl + previewPath` and loads it in the preview panel.
+| `settings.site.url` | Base URL of your deployed site. |
+| `content[].site.path` | Preview path template (`{{slug}}`, field names, etc.). |
+| `fields[].preview` | DOM binding rules for live updates. |
 
 ## Framework guides
 
 Choose your framework:
 
-- [Next.js](./preview/nextjs)
-- [Nuxt](./preview/nuxt)
-- [SvelteKit](./preview/sveltekit)
-- [Astro](./preview/astro)
+- [Next.js](./nextjs)
+- [Nuxt](./nuxt)
+- [SvelteKit](./sveltekit)
+- [Astro](./astro)
 
 ## Framework compatibility
 

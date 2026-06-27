@@ -41,7 +41,7 @@ export function writeWranglerSecrets(overrides = {}) {
 
   if (!secrets.OAUTH_PROXY_SECRET && secrets.BASE_URL !== secrets.AUTH_PRODUCTION_URL) {
     throw new Error(
-      'OAUTH_PROXY_SECRET is required when BASE_URL differs from AUTH_PRODUCTION_URL.',
+      'OAUTH_PROXY_SECRET is required when BASE_URL differs from AUTH_PRODUCTION_URL (preview/staging auth).',
     );
   }
 

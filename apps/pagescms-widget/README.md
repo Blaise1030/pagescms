@@ -13,25 +13,9 @@ This script is installed on a user's public website. It provides:
 pnpm --filter @pagescms/widget build
 ```
 
-Outputs:
+Output: `public/pagescms-widget.js` (bundled into the main CMS app at `/pagescms-widget.js` on deploy).
 
-- `apps/pagescms-widget/dist/pagescms-widget.js` — worker assets
-- `public/pagescms-widget.js` — local copy for the main CMS app
-
-## Deploy (Cloudflare Worker)
-
-The widget is deployed as a separate Cloudflare Worker named `pagescms-widget`:
-
-```bash
-pnpm deploy:widget
-```
-
-Production and preview deployments run automatically via GitHub Actions alongside the main CMS worker.
-
-| Environment | Worker name | Script URL |
-|-------------|-------------|------------|
-| Production | `pagescms-widget` | `https://pagescms-widget.<subdomain>.workers.dev/pagescms-widget.js` |
-| PR preview | `pagescms-widget-pr-<N>` | `https://pagescms-widget-pr-<N>.<subdomain>.workers.dev/pagescms-widget.js` |
+The root `pnpm build` runs the widget build before `vinext build`, so CI ships the script with the main application worker.
 
 ## Development
 
@@ -45,7 +29,7 @@ Rebuilds automatically on file changes.
 
 ```html
 <script
-  src="https://pagescms-widget.<subdomain>.workers.dev/pagescms-widget.js"
+  src="https://your-cms.example/pagescms-widget.js"
   data-pagescms-origin="https://your-cms.example"
   data-pagescms-owner="org"
   data-pagescms-repo="repo"

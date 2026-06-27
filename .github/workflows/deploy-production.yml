@@ -23,4 +23,3 @@ jobs:
     with:
       run-migrations: ${{ inputs.run-migrations }}
       environment: production
-      widget-worker-name: pagescms-widget

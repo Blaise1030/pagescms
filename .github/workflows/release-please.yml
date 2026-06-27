@@ -50,4 +50,3 @@ jobs:
     with:
       run-migrations: true
       environment: production
-      widget-worker-name: pagescms-widget
