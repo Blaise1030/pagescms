@@ -1,5 +1,13 @@
 # Changelog
 
+## [3.7.1-alpha.1](https://github.com/Blaise1030/pagescms/compare/pagescms-v3.7.0-alpha.1...pagescms-v3.7.1-alpha.1) (2026-06-27)
+
+
+### Bug Fixes
+
+* **auth:** resolve preview OAuth redirect to production ([1c4c707](https://github.com/Blaise1030/pagescms/commit/1c4c707acc2e55610709bd0c4aaccd3f07523d32))
+* **auth:** resolve preview OAuth redirect to production ([22d8c20](https://github.com/Blaise1030/pagescms/commit/22d8c20117575f1f2bfad772bb68b67e4fca0932))
+
 ## [3.7.0-alpha.1](https://github.com/Blaise1030/pagescms/compare/pagescms-v3.6.0-alpha.1...pagescms-v3.7.0-alpha.1) (2026-06-27)
 
 
