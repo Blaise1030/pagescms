@@ -19,10 +19,8 @@
   "scripts": {
     "setup:github-app": "node scripts/setup-github-app.mjs",
     "dev": "vinext dev",
-    "build": "vinext build",
+    "build": "pnpm run build:widget && vinext build",
     "build:widget": "pnpm --filter @pagescms/widget build",
-    "build:all": "pnpm run build:widget && pnpm run build",
-    "deploy:widget": "pnpm --filter @pagescms/widget deploy",
     "start": "vinext start",
     "deploy": "vinext build && wrangler deploy",
     "test": "vitest run --config vitest.config.ts",

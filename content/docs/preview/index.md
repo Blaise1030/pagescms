@@ -30,7 +30,7 @@ Add `pagescms-widget.js` to your public site:
 
 ```html
 <script
-  src="https://pagescms-widget.<subdomain>.workers.dev/pagescms-widget.js"
+  src="https://your-cms.example/pagescms-widget.js"
   data-pagescms-origin="https://your-cms.example"
   data-pagescms-owner="org"
   data-pagescms-repo="repo"
