@@ -1,125 +1,118 @@
 ---
 title: "Preview — Astro"
-description: "Set up live preview in an Astro site using a framework island."
+description: "Set up live preview in an Astro site using the Pages CMS widget bridge."
 ---
 
 # Preview with Astro
 
-Astro renders pages as static HTML at build time. Because postMessage data arrives at runtime in the browser, a dedicated preview route with a client-side framework island is required to receive and render live updates.
+Astro sites work well with the widget bridge because pages are rendered as HTML with stable DOM nodes. Install the widget script, configure bindings in `.pages.yml`, and add selectors to your templates.
 
-## How it works
-
-Astro's islands architecture lets you drop a React, Vue, or Svelte component into an otherwise static page. The preview route uses a `client:only` island that renders the page layout and subscribes to postMessage updates.
-
-The real page (`/posts/[slug]`) stays fully static. The preview page (`/preview/[slug]`) is a separate route that loads the same layout component as a client island.
+Unlike the previous preview approach, you do not need a separate `/preview/[slug]` route or a client-side framework island for basic bindings.
 
 ## Setup
 
-### 1. Create a shared content component
+### 1. Install the widget script
 
-This component handles rendering for both the real page and the preview. Here it uses React, but Vue or Svelte work the same way.
-
-```tsx
-// src/components/PostContent.tsx
-import { useState, useEffect } from "react";
-import { marked } from "marked"; // npm install marked
-
-export interface PostData {
-  title?: string;
-  body?: string;
-  bodyHtml?: string;
-}
-
-export function PostContent({ initialData }: { initialData?: PostData }) {
-  const [data, setData] = useState<PostData | undefined>(initialData);
-
-  useEffect(() => {
-    if (window.parent === window) return;
-
-    async function handler(e: MessageEvent) {
-      if (e.data?.type !== "cms:preview") return;
-      const raw = e.data.data;
-      setData({
-        ...raw,
-        bodyHtml: raw.body ? await marked.parse(raw.body) : "",
-      });
-    }
-
-    window.addEventListener("message", handler);
-    window.parent.postMessage({ type: "cms:preview:ready" }, "*");
-    return () => window.removeEventListener("message", handler);
-  }, []);
-
-  return (
-    <article>
-      <h1>{data?.title ?? "Waiting for preview…"}</h1>
-      <div dangerouslySetInnerHTML={{ __html: data?.bodyHtml ?? "" }} />
-    </article>
-  );
-}
-```
-
-### 2. Create the preview route
+Add the script to your base layout:
 
 ```astro
 ---
-// src/pages/preview/[slug].astro
-import Layout from "@/layouts/Layout.astro";
-import { PostContent } from "@/components/PostContent";
-
-const { slug } = Astro.params;
+// src/layouts/Layout.astro
 ---
-
-<Layout>
-  <PostContent client:only="react" />
-</Layout>
-
-<script is:inline>
-  // Bridge postMessage from the CMS to a CustomEvent that the React island can receive.
-  window.addEventListener("message", function (e) {
-    if (e.data?.type !== "cms:preview") return;
-    window.dispatchEvent(
-      new CustomEvent("cms-preview-data", { detail: e.data.data })
-    );
-  });
-</script>
+<html>
+  <body>
+    <slot />
+    <script
+      src="https://your-cms.example/pagescms-widget.js"
+      data-pagescms-origin="https://your-cms.example"
+      data-pagescms-owner="org"
+      data-pagescms-repo="repo"
+      data-pagescms-branch="main"
+    ></script>
+  </body>
+</html>
 ```
 
-### 3. Configure the preview URL
-
-In `.pages.yml`, point `previewPath` to the preview route:
+### 2. Configure preview in `.pages.yml`
 
 ```yaml
-object:
-  siteUrl: https://yourdomain.com
-  previewPath: /preview/{slug}
+settings:
+  site:
+    url: https://yourdomain.com
+content:
+  - name: posts
+    type: collection
+    path: content/posts
+    site:
+      path: /blog/{{slug}}
+    fields:
+      - name: title
+        type: string
+        preview:
+          target: "#post-title"
+          bind: text
+      - name: body
+        type: rich-text
+        preview:
+          target: "#post-body"
+          bind: html
 ```
 
-## Real page vs preview page
-
-The real `/posts/[slug]` page remains a standard Astro page — fully static, no JS added:
+### 3. Add selectors to your page
 
 ```astro
 ---
-// src/pages/posts/[slug].astro
+// src/pages/blog/[slug].astro
 import { getCollection } from "astro:content";
 import Layout from "@/layouts/Layout.astro";
 
 const { slug } = Astro.params;
-const post = await getCollection("blog").then(entries =>
-  entries.find(e => e.slug === slug)
+const post = await getCollection("blog").then((entries) =>
+  entries.find((e) => e.slug === slug)
 );
 const { Content } = await post.render();
 ---
 
 <Layout>
-  <h1>{post.data.title}</h1>
-  <Content />
+  <article>
+    <h1 id="post-title">{post.data.title}</h1>
+    <div id="post-body">
+      <Content />
+    </div>
+  </article>
 </Layout>
 ```
 
-The preview page exists only for the CMS. Editors are pointed to `/preview/[slug]`; the real page is unaffected.
+The page is fully static. When it loads inside the CMS preview iframe, the widget updates the bound elements as the editor types.
+
+## How it works
+
+1. Pages CMS builds a URL like `https://yourdomain.com/blog/my-post` from `settings.site.url` and `content[].site.path`.
+2. The real page loads in the preview iframe — no separate preview route is needed.
+3. The widget receives binding updates and updates `#post-title`, `#post-body`, etc. directly.
+
+## Astro with islands
+
+If your content area is a client island (React, Vue, Svelte), place binding targets on static HTML elements outside the island, or ensure the island renders elements with stable selectors on first paint.
+
+For example, bind to a static wrapper rather than content inside a `client:only` island:
+
+```astro
+<article>
+  <h1 id="post-title">{post.data.title}</h1>
+  <div id="post-body">
+    <PostContent client:load post={post} />
+  </div>
+</article>
+```
+
+## Tips
+
+- Astro's zero-JS default is ideal for preview — the widget updates existing DOM nodes without hydration.
+- For markdown `body` fields, use `bind: html` — the CMS converts markdown to HTML before sending.
+- Add `pagescms:*` meta tags if you want the admin bar to link back to the entry (see the [Preview overview](./index#admin-bar-edit-links)).
 
 ## Performance notes
 
-Astro ships zero JS by default. Adding a `client:only` island to the preview route adds the React runtime and the component bundle to that route. Because the preview route is only ever loaded inside the CMS iframe, this has no impact on your real pages or your site's public performance metrics.
+- The real page stays fully static — no extra JS is added for preview on public pages.
+- The widget script is the only addition, and DOM updates only run inside the CMS iframe.

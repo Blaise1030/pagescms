@@ -19,6 +19,24 @@ Use `settings` for behavior that applies across the whole repository. Typical us
 | `hide` | If `true`, hides the Settings page in the UI. |
 | `content` | Controls how structured content is saved. |
 | `commit` | Controls commit settings. |
+| `site` | Site URL and preview panel defaults. See [Preview](../preview). |
+
+## Site
+
+`settings.site` configures the public site URL used by the preview panel and admin bar widget.
+
+| Key | Description |
+| --- | --- |
+| `url` | Base URL of your deployed site (e.g. `https://yourdomain.com`). |
+| `preview.defaultOpen` | If `true`, open the preview panel by default when editing an entry. |
+
+```yaml
+settings:
+  site:
+    url: https://yourdomain.com
+    preview:
+      defaultOpen: true
+```
 
 ## Content
 
@@ -76,6 +94,10 @@ Available tokens:
 ```yaml
 settings:
   hide: false
+  site:
+    url: https://yourdomain.com
+    preview:
+      defaultOpen: true
   content:
     merge: true
   commit:

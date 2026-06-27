@@ -1,101 +1,103 @@
 ---
 title: "Preview — Nuxt"
-description: "Set up live preview in a Nuxt app using a usePreviewData composable."
+description: "Set up live preview in a Nuxt app using the Pages CMS widget bridge."
 ---
 
 # Preview with Nuxt
 
-Nuxt renders pages server-side and hydrates them with Vue on the client. The integration is a single composable that wraps your server-fetched data and overrides it with postMessage updates when inside the CMS preview iframe.
+Nuxt pages can be previewed directly in the CMS iframe. Install the widget script, configure bindings in `.pages.yml`, and add stable DOM selectors to your templates.
 
-## The pattern
+No custom composables are required for basic field bindings.
 
-Use `useAsyncData` to fetch on the server, then pass the result to `usePreviewData`. The composable returns a reactive ref — your template updates automatically when the CMS sends new data.
+## Setup
+
+### 1. Install the widget script
+
+Add the script to `app.vue` or your default layout:
 
 ```vue
-<!-- pages/posts/[slug].vue -->
-<script setup>
-import { usePreviewData } from "~/composables/usePreviewData";
+<!-- app.vue -->
+<template>
+  <NuxtPage />
+</template>
 
+<script setup>
+useHead({
+  script: [
+    {
+      src: "https://your-cms.example/pagescms-widget.js",
+      "data-pagescms-origin": "https://your-cms.example",
+      "data-pagescms-owner": "org",
+      "data-pagescms-repo": "repo",
+      "data-pagescms-branch": "main",
+    },
+  ],
+});
+</script>
+```
+
+### 2. Configure preview in `.pages.yml`
+
+```yaml
+settings:
+  site:
+    url: https://yourdomain.com
+content:
+  - name: posts
+    type: collection
+    path: content/posts
+    site:
+      path: /blog/{{slug}}
+    fields:
+      - name: title
+        type: string
+        preview:
+          target: "#post-title"
+          bind: text
+      - name: body
+        type: rich-text
+        preview:
+          target: "#post-body"
+          bind: html
+```
+
+### 3. Add selectors to your page
+
+```vue
+<!-- pages/blog/[slug].vue -->
+<script setup>
 const route = useRoute();
-const { data: initialData } = await useAsyncData(() =>
+const { data: post } = await useAsyncData(() =>
   $fetch(`/api/posts/${route.params.slug}`)
 );
-
-const post = usePreviewData(initialData);
 </script>
 
 <template>
   <article>
-    <h1>{{ post.title }}</h1>
-    <div v-html="post.bodyHtml" />
+    <h1 id="post-title">{{ post.title }}</h1>
+    <div id="post-body" v-html="post.bodyHtml" />
   </article>
 </template>
 ```
 
-## usePreviewData composable
+The server renders the saved content. When the page loads inside the CMS preview iframe, the widget updates the bound elements as the editor types.
 
-Create this composable once in your project:
+## How it works
 
-```ts
-// composables/usePreviewData.ts
-import { ref, watch, type Ref } from "vue";
+1. Pages CMS builds a URL like `https://yourdomain.com/blog/my-post` from `settings.site.url` and `content[].site.path`.
+2. The page loads in the preview iframe with `pagescms-widget.js`.
+3. The widget receives binding updates and updates `#post-title`, `#post-body`, etc. directly.
 
-export function usePreviewData<T>(initialData: Ref<T | null>): Ref<T | null> {
-  const data = ref(initialData.value);
+Because bindings target DOM nodes rather than Vue reactivity, the preview works without composables or `postMessage` listeners in your app code.
 
-  watch(initialData, (val) => {
-    data.value = val;
-  });
+## Tips
 
-  if (import.meta.client) {
-    window.addEventListener("message", (e) => {
-      if (e.data?.type === "cms:preview") data.value = e.data.data;
-    });
-    window.parent.postMessage({ type: "cms:preview:ready" }, "*");
-  }
-
-  return data as Ref<T | null>;
-}
-```
-
-The `import.meta.client` guard ensures the postMessage listener is never included in the server bundle.
-
-## Handling markdown body
-
-If your content has a markdown `body` field, parse it client-side when in preview mode:
-
-```ts
-// composables/usePreviewData.ts
-import { ref, watch, type Ref } from "vue";
-import { marked } from "marked"; // npm install marked
-
-export function usePreviewData<T extends { body?: string; bodyHtml?: string }>(
-  initialData: Ref<T | null>
-): Ref<T | null> {
-  const data = ref(initialData.value);
-
-  watch(initialData, (val) => {
-    data.value = val;
-  });
-
-  if (import.meta.client) {
-    window.addEventListener("message", async (e) => {
-      if (e.data?.type !== "cms:preview") return;
-      const raw = e.data.data;
-      data.value = {
-        ...raw,
-        bodyHtml: raw.body ? await marked.parse(raw.body) : "",
-      };
-    });
-    window.parent.postMessage({ type: "cms:preview:ready" }, "*");
-  }
-
-  return data as Ref<T | null>;
-}
-```
+- Use `id` attributes for unique elements and classes for repeated list items.
+- For markdown `body` fields, use `bind: html` — the CMS converts markdown to HTML before sending.
+- The widget is a no-op on public pages outside the CMS iframe.
 
 ## Performance notes
 
 - Nuxt still server-renders the page to HTML — first paint and LCP are unaffected.
-- Vue runtime is already shipped to the browser by Nuxt, so there is no extra bundle cost for adding this composable.
-- The `import.meta.client` guard tree-shakes the postMessage code from the server bundle.
+- The widget script is small and only applies DOM updates when inside the CMS iframe.
+- No extra client-side composables are needed for basic preview bindings.

@@ -33,8 +33,36 @@ description: "Define editable collections, files, and groups."
 | `commit` | Per-entry commit settings (e.g. `{ identity: "user" }`). |
 | `actions` | Adds collection or file action buttons. |
 | `items` | Child entries inside a `group`. |
+| `site` | Preview path template for this entry. Requires `settings.site.url`. See [Preview](../preview). |
 
 \* Required
+
+## Preview
+
+Each collection or file entry can define a `site.path` template that resolves to the public URL for that entry. Combine with `fields[].preview` to bind CMS fields to DOM elements on the page.
+
+```yaml
+settings:
+  site:
+    url: https://yourdomain.com
+content:
+  - name: posts
+    type: collection
+    path: content/posts
+    site:
+      path: /blog/{{slug}}
+    fields:
+      - name: title
+        type: string
+        preview:
+          target: "#title"
+          bind: text
+```
+
+| Key | Description |
+| --- | --- |
+| `site.path` | URL path template (`{{slug}}`, `{{filename}}`, `{{basename}}`, field names). |
+| `fields[].preview` | DOM binding rule(s) for live preview. See [Preview](../preview#field-bindings). |
 
 ## Examples
 
@@ -49,8 +77,14 @@ content:
     fields:
       - name: title
         type: string
+        preview:
+          target: "#title"
+          bind: text
       - name: body
         type: rich-text
+        preview:
+          target: "#body"
+          bind: html
 ```
 
 ### Single file
