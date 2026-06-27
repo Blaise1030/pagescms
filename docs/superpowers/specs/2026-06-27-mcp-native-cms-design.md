@@ -1,185 +1,154 @@
 ---
 name: mcp-native-cms
-description: Turn the git-native CMS into an MCP-native content backend for the AI / vibe-coding era — one content-service core exposed over REST (UI), MCP (agents/builders), and a public read API (deployed apps), so any platform that speaks MCP gets a CMS for free.
+description: The AI-age CMS in two separate parts — (1) a Setup Skill the vibe-coding agent runs to interview the user and author the .pages.yml schema (no backend), and (2) an MCP server that lets Claude discover existing content and push content into the platform. Both sit on one content-service core.
 metadata:
   type: project
 ---
 
-# MCP-Native CMS — Design
+# AI-Age CMS — Two-Part Design (umbrella)
 
-## Goal
+## The two parts
 
-Make this CMS the path of least resistance for any AI agent or vibe-coding
-platform (Cursor, Claude, Lovable, Bolt, v0, Windsurf, ChatGPT) that needs
-structured, writable, **reviewable** content. We do this by exposing the
-existing content engine over the **Model Context Protocol** plus a public
-read API — built once, reachable everywhere — under the `gitcms.dev` brand.
+The AI-age direction for this CMS is **two separate products** with
+different audiences, lifecycles, and infrastructure. Keeping them separate
+is the whole point.
 
-Why this is the right bet: a git-native CMS already stores content as typed
-files with schema validation and commit history. That happens to be the
-exact substrate AI needs — files (no DB lock-in), typed schema (a contract
-agents validate against), and git (every AI edit is a reviewable,
-revertable, attributable commit/PR). We are not bolting AI on; we are
-exposing what already exists.
+| | **Part 1 — Setup Skill** | **Part 2 — Content MCP server** |
+|---|---|---|
+| Job | **Configure** — author the `.pages.yml` schema | **Populate** — discover & push content |
+| Trigger | Once at setup (+ on model changes) | Continuously |
+| Form | Agent **Skill(s)** run in the host platform | Running **MCP server** (Streamable HTTP) |
+| Backend | **None** — writes a file into the repo | Worker + D1 + GitHub, PAT/OAuth auth |
+| Audience | Vibe-coding platforms (Lovable, Cursor…) | Claude / any MCP agent |
+| Spec | `2026-06-27-cms-setup-skill-design.md` | `2026-06-27-mcp-server-design.md` |
 
-This spec concludes the discussion captured in the companion docs and is the
-canonical design to build from:
-- `2026-06-27-mcp-server-design.md` — detailed server spec
-- `2026-06-27-mcp-platform-architecture.md` — multi-platform shape
-- `2026-06-27-github-graphql-analysis.md` — GraphQL value assessment
-
-## Architecture: one core, three transports
+Part 1 defines the **shape**; Part 2 fills it. A user vibe-codes a site, the
+Setup Skill interviews them and writes the schema, then Claude (via MCP)
+keeps the content flowing against that schema.
 
 ```
-                 lib/content-service.ts          ← single source of truth
-        (schema resolve · Zod validate · field codecs ·
-         serialize · commit · operations + access gates)
-            ▲                ▲                  ▲
-       REST API          MCP server        Public read API
-       (web UI)          (agents/          (deployed apps
-       cookie auth        builders)         fetch content)
-                          PAT / OAuth       read-only, key-gated
+ Part 1 (Skill, no backend)            Part 2 (MCP server)
+ ┌───────────────────────┐            ┌───────────────────────┐
+ │ interview user        │            │ discover content       │
+ │ → pick project type   │  writes    │ list/get/search entry  │
+ │ → author .pages.yml   │ ─────────▶ │ push content           │
+ │ → optional preview    │  schema    │ write/propose entry    │
+ └───────────────────────┘  to repo   └───────────────────────┘
+        configures the shape                fills the shape
 ```
 
-Everything routes through one framework-agnostic core. Building the MCP
-server and the public API is overwhelmingly **transport + auth + tool
-shaping** over logic that already exists inside the route handlers.
+## Why this is the right bet
 
-**The MCP server is build-time** (agent reads schema, edits content,
-scaffolds client code); connectors are never shipped in the deployed app.
-**The public read API is runtime** — the scaffolded code calls it to render
-content. Both are required: setup with nothing to talk to is dead on
-arrival.
+A git-native CMS already stores content as typed files with schema
+validation and commit history — exactly the substrate AI needs: files (no
+DB lock-in), typed schema (a contract agents validate against), git (every
+AI edit is a reviewable, revertable, attributable commit/PR). We expose what
+already exists rather than bolt AI on. Distributed as a Skill + an MCP
+server, it reaches every platform that speaks those standards — built once,
+reachable everywhere — under the `gitcms.dev` brand.
 
-## Scope
+## Part 1 — Setup Skill (configure)
 
-### Prerequisite (gates everything)
+A **family of Skills** the host agent runs: a parent `setup-pages-cms` that
+detects/asks the project type, dispatching to a specialized sub-skill (blog,
+docs, marketing, portfolio, changelog, catalog, knowledge-base). Each
+sub-skill carries its own interview script + schema template + field
+guidance, because the right questions and schema shape genuinely differ by
+project type. Output **must validate** against `ConfigSchema`
+(`lib/config-schema.ts`). It writes `.pages.yml` into the repo — no backend.
 
-- **Extract `lib/content-service.ts`** — pure functions taking an explicit
-  `RepoCtx` ({ user, token, config, octokit }) instead of `NextRequest` /
-  session. CRUD logic currently lives inline in route handlers
-  (`app/api/[owner]/[repo]/[branch]/files/[path]/route.ts`,
-  `entries/[path]/route.ts`, `collections/[name]/route.ts`). Move it; make
-  REST routes thin adapters. Independently valuable (testable core, less
-  duplication) and unblocks all three transports.
+Optionally it also scaffolds runtime content-fetching code + types (the
+codegen that does **not** belong in the MCP server). Full detail:
+`2026-06-27-cms-setup-skill-design.md`.
 
-Reuses, unchanged:
-- `getSchemaByName` (`lib/schema.ts`) — resolve collection/file schema
-- `generateZodSchema` — entry validator (**the agent guardrail**; → JSON
-  Schema gives each MCP tool a typed input contract for free)
-- `deepMap` + `getCodec().read/.write` — per-field transforms
-- `parse` / `stringify` (`lib/serialization.ts`) — frontmatter & serial
-- `buildCommitTokens` / `resolveCommitMessage` / `resolveCommitIdentity`
-- `getToken` / `checkRepoAccess` / `isContentOperationAllowed`
+## Part 2 — Content MCP server (populate)
 
-### MCP server (`worker/index.ts` mount, Streamable HTTP)
-
-Tool surface, in five capability groups:
+Lets Claude **know what content exists** and **push content in**. Tool
+groups:
 
 1. **Discover** — `list_collections`, `get_entry_schema`
 2. **Read** — `list_entries`, `get_entry`, `search_content`
 3. **Write** — `write_entry`, `delete_entry`, `rename_entry`, with
-   `mode: "commit" | "propose"` (propose = branch + PR; **default for
-   agents** — human reviews the diff)
+   `mode: "commit" | "propose"` (propose = branch + PR; default for agents)
 4. **Assets / automation** — `upload_media`, `list_actions`, `run_action`
-5. **Scaffold (the integration adapter)** — `scaffold_client` with a
-   `target` enum (react-vite, next, svelte, raw): emits a typed client + TS
-   types (from `generateZodSchema`) + env config + example components into
-   the host project. This one tool is how we "integrate with any platform"
-   — neutral code the host agent writes in, which then calls the public
-   read API. No per-platform code on our side.
 
-Ship **static generic tools first**; layer **dynamic per-collection tools**
-(generated from `.pages.yml`, e.g. `create_blog_post` with the collection's
-JSON Schema) behind a flag — they make the CMS feel native but the list
-changes per repo.
+Static generic tools first; dynamic per-collection tools (from `.pages.yml`)
+behind a flag later. **`scaffold_client` is removed from the MCP server** —
+it belongs to Part 1's Skill. Full detail:
+`2026-06-27-mcp-server-design.md`.
 
-### Public read API
+## Shared foundation (both parts depend on it)
 
-- `GET /api/public/{owner}/{repo}/{branch}/content/...` → parsed
-  `contentObject` JSON (reuses `parse` + read codecs).
-- Read-only transport over the core. Opt-in per repo; private repos require
-  a read key.
+### `lib/content-service.ts` (prerequisite for Part 2)
 
-### Auth
+Extract a framework-agnostic core taking an explicit `RepoCtx`
+({ user, token, config, octokit }) from the inline route-handler logic
+(`files/[path]/route.ts`, `entries/[path]/route.ts`,
+`collections/[name]/route.ts`). REST routes and MCP tools become thin
+adapters. Reuses `getSchemaByName`, `generateZodSchema` (the agent guardrail
+→ JSON Schema input contract), field codecs, `parse`/`stringify`, commit
+helpers, `getToken`/`checkRepoAccess`/`isContentOperationAllowed`.
 
-- **Phase 1 — PAT.** New `cms_token` table ({ id, userId, name, tokenHash,
-  scopes, expiresAt }); minted from Settings UI; sent as `Bearer`. Resolves
-  to the same `getToken` / `checkRepoAccess` gate the UI uses. Works on
-  every MCP client.
-- **Phase 2 — OAuth 2.1** (MCP auth spec) for one-click connect; degrades
-  to PAT.
-- **Invariant:** MCP auth never widens access beyond the user's GitHub
-  permissions.
+### The config contract (the bridge between the parts)
 
-### GraphQL (targeted, not wholesale)
+`ConfigSchema` (`lib/config-schema.ts`) is what Part 1 *writes* and Part 2
+*reads*. Field types: `string`, `text`, `rich-text`, `number`, `boolean`,
+`date`, `select`, `image`, `file`, `reference`, `code`, `uuid`; structural
+`object`/`block` (+ `list`). Entry types: `collection`, `file`, `group`.
 
-Only two moves (full rationale in the GraphQL analysis doc):
-1. Build the **repo-context handshake** (repo + viewer permission +
-   `.pages.yml` blob + branch head SHA) as a **single GraphQL query** inside
-   `content-service.ts`. Compounds across an agent's many tool calls.
-2. Design **`search_content`** (and `get_entry` returning content + commit
-   meta) on **GraphQL aliases**.
-Keep **writes on the git data API**. Everything is bounded by the existing
-D1 cache (most reads are cache hits that never touch GitHub).
+### Public read API (runtime)
 
-### Per-platform connection (docs, not code)
+`GET /api/public/{owner}/{repo}/{branch}/content/...` → parsed JSON,
+read-only, opt-in per repo (private repos need a read key). Supports the
+runtime code Part 1 may scaffold. Sits on the same core.
 
-One server, N copy-paste guides: Cursor/Windsurf (`mcp.json`),
-Claude (`claude mcp add`), Lovable (chat connector → invoke
-`scaffold_client`), ChatGPT/other (remote URL). Engineering surface stays a
-single server.
+### Auth (Part 2)
 
-## Out of scope (deliberate)
+PAT first (`cms_token` table, `Bearer`, resolves to the same GitHub access
+gate the UI uses), OAuth 2.1 later. Never widens beyond the user's GitHub
+permissions.
 
-- Editing `.pages.yml` via MCP (config reshapes the whole tool surface —
-  keep human-only initially).
-- Moving writes to GraphQL (negative ROI, high risk).
-- A bespoke Lovable-only integration (MCP is the universal adapter).
-- Hosted multi-tenant decision — see open questions; affects whether
-  OAuth/discovery is core or optional.
+### GraphQL (targeted)
+
+Two moves only: build the repo-context handshake as one GraphQL query in
+`content-service.ts`, and design `search_content` on GraphQL aliases. Keep
+writes on the git data API. Bounded by the D1 cache. Detail:
+`2026-06-27-github-graphql-analysis.md`.
 
 ## Safety
 
-- Per-token scopes (repo globs + op set); read-only tokens for RAG agents.
-- `operations` config enforced server-side regardless of agent request.
-- `propose` mode default keeps a human in the loop.
-- Edge rate-limiting per token.
-- Audit via git: every mutation is an attributable commit; tag
-  agent-originated commits (`Via: gitcms-mcp`).
-- Content read back from the repo is untrusted; the server returns data, it
-  does not act on instructions embedded in content.
-
-## Validation / error contract
-
-- All writes pass `generateZodSchema(fields).safeParse`; on failure return
-  field-path messages (`message at path.to.field`) so agents self-correct.
-- `sha` optimistic concurrency + `onConflict: "error" | "rename"` carry
-  over from REST unchanged.
+- Part 1: output validated against `ConfigSchema`; human reviews before
+  write; config stays human-owned.
+- Part 2: per-token scopes; `operations` enforced server-side; `propose`
+  default keeps a human in the loop; every mutation is an attributable git
+  commit (tag `Via: gitcms-mcp`); content read back is untrusted data, not
+  instructions.
 
 ## Build order
 
-1. Extract `lib/content-service.ts` (+ unit tests). Fold in the GraphQL
-   handshake query.
-2. PAT auth + `cms_token` table + Settings UI.
-3. MCP endpoint on the Worker: Discover + Read tools (`search_content` on
-   GraphQL aliases).
-4. Public read API.
-5. `scaffold_client` (react-vite + next targets first).
-6. Write tools (`commit` + `propose`).
-7. Media + actions tools.
-8. Dynamic per-collection tools; OAuth 2.1; connection guides + directory
-   listings.
+**Part 1 (ships independently, no backend):**
+1. Parent `setup-pages-cms` skill + project-type detection.
+2. Sub-skills: blog, docs, marketing (then portfolio, changelog, catalog,
+   knowledge-base).
+3. Optional runtime scaffold (react-vite, next).
+
+**Part 2 (needs the core):**
+4. Extract `lib/content-service.ts` (+ tests; fold in GraphQL handshake).
+5. PAT auth + `cms_token` + Settings UI.
+6. MCP endpoint: Discover + Read (`search_content` on GraphQL aliases).
+7. Public read API.
+8. Write tools (`commit` + `propose`); media + actions.
+9. Dynamic per-collection tools; OAuth 2.1; per-platform connection guides.
+
+Part 1 and Part 2 are independently shippable; Part 1 has no backend
+dependency and can land first.
 
 ## Open questions
 
-- **Managed multi-tenant gitcms vs self-host-first** — decides whether
-  discovery / OAuth is core or optional. *Highest-leverage decision.*
-- Endpoint scoping: single `/mcp` (repo arg) vs per-repo
-  `/{owner}/{repo}/mcp` (cleaner dynamic tools + tighter token scope).
-- Default write mode for agents: `propose` (lean) vs `commit`.
-- Public read API: fully public vs read-key-gated by default (lean: opt-in;
-  private repos require a key).
-- Dynamic tool-list explosion for large configs — may need a
-  `select_collection` gate or grouping.
-```
+- **Managed multi-tenant vs self-host-first** — decides whether
+  discovery/OAuth is core (Part 2). Highest-leverage decision.
+- Skill distribution mechanism per platform (published Agent Skills vs
+  host-served) — confirm how Lovable surfaces skills.
+- Does Part 1 stop at `.pages.yml` or also scaffold runtime rendering?
+- Endpoint scoping (single `/mcp` vs per-repo); default write mode
+  (`propose` vs `commit`); public read API public vs key-gated.
