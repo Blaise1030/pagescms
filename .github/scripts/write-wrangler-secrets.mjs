@@ -36,12 +36,14 @@ export function writeWranglerSecrets(overrides = {}) {
   }
 
   if (!secrets.AUTH_PRODUCTION_URL) {
-    secrets.AUTH_PRODUCTION_URL = secrets.BASE_URL;
+    throw new Error(
+      'AUTH_PRODUCTION_URL is required for deploy secrets (production OAuth callback URL).',
+    );
   }
 
-  if (!secrets.OAUTH_PROXY_SECRET && secrets.BASE_URL !== secrets.AUTH_PRODUCTION_URL) {
+  if (!secrets.OAUTH_PROXY_SECRET) {
     throw new Error(
-      'OAUTH_PROXY_SECRET is required when BASE_URL differs from AUTH_PRODUCTION_URL (preview/staging auth).',
+      'OAUTH_PROXY_SECRET is required for deploy secrets. Use the same value on production and preview workers.',
     );
   }
 

@@ -35,6 +35,43 @@ export const getProductionUrl = () => {
   return baseUrl;
 };
 
+/** Production OAuth callback host — never inferred from the incoming request host. */
+export const getOAuthProductionUrl = () => {
+  const fromEnv = process.env.AUTH_PRODUCTION_URL?.trim();
+  if (fromEnv) {
+    return normalizeUrl(fromEnv);
+  }
+
+  const baseUrl = process.env.BASE_URL?.trim();
+  if (baseUrl && !/-pagescms-staging\./.test(baseUrl)) {
+    return normalizeUrl(baseUrl);
+  }
+
+  throw new Error(
+    "AUTH_PRODUCTION_URL is required when deploying preview/staging workers.",
+  );
+};
+
+/** Host patterns allowed for per-request base URL resolution on Workers. */
+export function getAuthBaseUrlConfig() {
+  const fallback =
+    process.env.AUTH_PRODUCTION_URL?.trim() ||
+    process.env.BASE_URL?.trim() ||
+    DEV_BASE_URL;
+
+  return {
+    allowedHosts: [
+      "localhost:3000",
+      "pagescms.nocodemonkeys1.workers.dev",
+      "pagescms-staging.nocodemonkeys1.workers.dev",
+      "pr-*-pagescms-staging.nocodemonkeys1.workers.dev",
+      "*-pagescms-staging.nocodemonkeys1.workers.dev",
+    ],
+    fallback,
+    protocol: "auto" as const,
+  };
+}
+
 /** GitHub OAuth redirect URI — always the production callback, never the preview host. */
 export const getGithubOAuthRedirectUri = () =>
-  `${getProductionUrl()}/api/auth/callback/github`;
+  `${getOAuthProductionUrl()}/api/auth/callback/github`;
