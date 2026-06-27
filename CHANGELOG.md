@@ -1,5 +1,13 @@
 # Changelog
 
+## [3.8.0-alpha.1](https://github.com/Blaise1030/pagescms/compare/pagescms-v3.7.1-alpha.1...pagescms-v3.8.0-alpha.1) (2026-06-27)
+
+
+### Features
+
+* add site bootstrap API with open CORS for widget ([b5c94d6](https://github.com/Blaise1030/pagescms/commit/b5c94d6385b9f163f294f6ed76e36c67e7596177))
+* add site bootstrap API with per-repo CORS whitelist ([ff404d7](https://github.com/Blaise1030/pagescms/commit/ff404d711ee7994471393a0741f9d8114f535d53))
+
 ## [3.7.1-alpha.1](https://github.com/Blaise1030/pagescms/compare/pagescms-v3.7.0-alpha.1...pagescms-v3.7.1-alpha.1) (2026-06-27)
 
 
