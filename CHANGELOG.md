@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.6.0-alpha.1](https://github.com/Blaise1030/pagescms/compare/pagescms-v3.5.0-alpha.1...pagescms-v3.6.0-alpha.1) (2026-06-27)
+
+
+### Features
+
+* **ci:** staging worker previews with oauth-proxy for PR deployments ([360d12b](https://github.com/Blaise1030/pagescms/commit/360d12b0b00d63186a1b5c6dfb3f124ce76d2838))
+
 ## [3.5.0-alpha.1](https://github.com/Blaise1030/pagescms/compare/pagescms-v3.4.0-alpha.1...pagescms-v3.5.0-alpha.1) (2026-06-23)
 
 
