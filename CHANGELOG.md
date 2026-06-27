@@ -1,5 +1,24 @@
 # Changelog
 
+## [3.7.0-alpha.1](https://github.com/Blaise1030/pagescms/compare/pagescms-v3.6.0-alpha.1...pagescms-v3.7.0-alpha.1) (2026-06-27)
+
+
+### Features
+
+* add preview bridge integration and widget worker ([2d1b329](https://github.com/Blaise1030/pagescms/commit/2d1b3291e3536289b07b82700000148adf5f3f9e))
+* add preview bridge integration and widget worker ([3bdf891](https://github.com/Blaise1030/pagescms/commit/3bdf891e97aedd3db79f0d01a0112dd3214df4ea))
+
+
+### Bug Fixes
+
+* **auth:** always send production redirect_uri to GitHub on previews ([32ef68b](https://github.com/Blaise1030/pagescms/commit/32ef68b50cc58abcacf7db36c679d1d4c2559a4a))
+* **auth:** keep OAuth proxy callback on preview host after login ([e1fd61b](https://github.com/Blaise1030/pagescms/commit/e1fd61b7ed70f9dd9a3525652237024e6191b405))
+* **auth:** resolve OAuth state_mismatch on preview deployments ([a47a1be](https://github.com/Blaise1030/pagescms/commit/a47a1be5bab203989f225c165671fc0a4bc0a02b))
+* **ci:** bootstrap staging worker so preview URLs actually route ([e4ef831](https://github.com/Blaise1030/pagescms/commit/e4ef831f44c41e0e6f54bb93c0117b9330e0640a))
+* **ci:** target pagescms-staging worker for preview deploys ([34dce9f](https://github.com/Blaise1030/pagescms/commit/34dce9fc6292a0b1905a208d9addbed2c5e9ecf2))
+* **ci:** upload preview secrets to staging worker via secrets-file ([f172ac6](https://github.com/Blaise1030/pagescms/commit/f172ac67f1860ed11c1b9974ffd4603d2c31f3fa))
+* enable preview URLs on pagescms-staging worker ([20e4356](https://github.com/Blaise1030/pagescms/commit/20e4356051263e952dd1855086cfef8045560961))
+
 ## [3.6.0-alpha.1](https://github.com/Blaise1030/pagescms/compare/pagescms-v3.5.0-alpha.1...pagescms-v3.6.0-alpha.1) (2026-06-27)
 
 
