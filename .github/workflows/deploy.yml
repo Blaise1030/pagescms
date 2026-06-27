@@ -31,6 +31,27 @@ jobs:
   deploy:
     environment: ${{ inputs.environment }}
     runs-on: ubuntu-latest
+    env:
+      AUTH_PRODUCTION_URL: ${{ secrets.AUTH_PRODUCTION_URL || secrets.BASE_URL }}
+      BASE_URL: ${{ secrets.BASE_URL }}
+      OAUTH_PROXY_SECRET: ${{ secrets.OAUTH_PROXY_SECRET }}
+      BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET }}
+      CRYPTO_KEY: ${{ secrets.CRYPTO_KEY }}
+      A_GITHUB_APP_PRIVATE_KEY: ${{ secrets.A_GITHUB_APP_PRIVATE_KEY }}
+      A_GITHUB_APP_CLIENT_SECRET: ${{ secrets.A_GITHUB_APP_CLIENT_SECRET }}
+      ADMIN_EMAILS: ${{ secrets.ADMIN_EMAILS }}
+      A_GITHUB_APP_ID: ${{ secrets.A_GITHUB_APP_ID }}
+      A_GITHUB_APP_NAME: ${{ secrets.A_GITHUB_APP_NAME }}
+      A_GITHUB_APP_CLIENT_ID: ${{ secrets.A_GITHUB_APP_CLIENT_ID }}
+      EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
+      CACHE_CHECK_MIN: ${{ secrets.CACHE_CHECK_MIN }}
+      CONFIG_CHECK_MIN: ${{ secrets.CONFIG_CHECK_MIN }}
+      FILE_TTL_MIN: ${{ secrets.FILE_TTL_MIN }}
+      PERMISSIONS_TTL_MIN: ${{ secrets.PERMISSIONS_TTL_MIN }}
+      BRANCH_HEAD_TTL_MS: ${{ secrets.BRANCH_HEAD_TTL_MS }}
+      REPO_META_TTL_MS: ${{ secrets.REPO_META_TTL_MS }}
+      WEBHOOK_PUSH_INCREMENTAL_MAX_FILES: ${{ secrets.WEBHOOK_PUSH_INCREMENTAL_MAX_FILES }}
+      WEBHOOK_PUSH_SCOPED_INVALIDATION_MAX_FILES: ${{ secrets.WEBHOOK_PUSH_SCOPED_INVALIDATION_MAX_FILES }}
     outputs:
       deployment-url: ${{ steps.set-url.outputs.deployment-url || steps.set-staging-url.outputs.deployment-url || steps.deploy.outputs.deployment-url }}
     steps:
@@ -76,171 +97,17 @@ jobs:
           echo "BASE_URL=$URL" >> $GITHUB_ENV
           echo "deployment-url=$URL" >> $GITHUB_OUTPUT
 
-      - name: Write secrets file for preview
-        if: ${{ inputs.preview-alias != '' }}
-        run: |
-          node <<'EOF'
-          const fs = require('fs');
-          const secrets = {
-            BASE_URL: process.env.BASE_URL,
-            AUTH_PRODUCTION_URL: process.env.AUTH_PRODUCTION_URL,
-            OAUTH_PROXY_SECRET: process.env.OAUTH_PROXY_SECRET,
-            BETTER_AUTH_SECRET: process.env.BETTER_AUTH_SECRET,
-            CRYPTO_KEY: process.env.CRYPTO_KEY,
-            A_GITHUB_APP_PRIVATE_KEY: process.env.A_GITHUB_APP_PRIVATE_KEY,
-            A_GITHUB_APP_CLIENT_SECRET: process.env.A_GITHUB_APP_CLIENT_SECRET,
-            ADMIN_EMAILS: process.env.ADMIN_EMAILS,
-            A_GITHUB_APP_ID: process.env.A_GITHUB_APP_ID,
-            A_GITHUB_APP_NAME: process.env.A_GITHUB_APP_NAME,
-            A_GITHUB_APP_CLIENT_ID: process.env.A_GITHUB_APP_CLIENT_ID,
-            EMAIL_FROM: process.env.EMAIL_FROM,
-            CACHE_CHECK_MIN: process.env.CACHE_CHECK_MIN,
-            CONFIG_CHECK_MIN: process.env.CONFIG_CHECK_MIN,
-            FILE_TTL_MIN: process.env.FILE_TTL_MIN,
-            PERMISSIONS_TTL_MIN: process.env.PERMISSIONS_TTL_MIN,
-            BRANCH_HEAD_TTL_MS: process.env.BRANCH_HEAD_TTL_MS,
-            REPO_META_TTL_MS: process.env.REPO_META_TTL_MS,
-            WEBHOOK_PUSH_INCREMENTAL_MAX_FILES: process.env.WEBHOOK_PUSH_INCREMENTAL_MAX_FILES,
-            WEBHOOK_PUSH_SCOPED_INVALIDATION_MAX_FILES: process.env.WEBHOOK_PUSH_SCOPED_INVALIDATION_MAX_FILES,
-          };
-          fs.writeFileSync('wrangler-secrets.json', JSON.stringify(secrets));
-          EOF
-        env:
-          BASE_URL: ${{ env.BASE_URL || secrets.BASE_URL }}
-          AUTH_PRODUCTION_URL: ${{ secrets.AUTH_PRODUCTION_URL || secrets.BASE_URL }}
-          OAUTH_PROXY_SECRET: ${{ secrets.OAUTH_PROXY_SECRET }}
-          BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET }}
-          CRYPTO_KEY: ${{ secrets.CRYPTO_KEY }}
-          A_GITHUB_APP_PRIVATE_KEY: ${{ secrets.A_GITHUB_APP_PRIVATE_KEY }}
-          A_GITHUB_APP_CLIENT_SECRET: ${{ secrets.A_GITHUB_APP_CLIENT_SECRET }}
-          ADMIN_EMAILS: ${{ secrets.ADMIN_EMAILS }}
-          A_GITHUB_APP_ID: ${{ secrets.A_GITHUB_APP_ID }}
-          A_GITHUB_APP_NAME: ${{ secrets.A_GITHUB_APP_NAME }}
-          A_GITHUB_APP_CLIENT_ID: ${{ secrets.A_GITHUB_APP_CLIENT_ID }}
-          EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
-          CACHE_CHECK_MIN: ${{ secrets.CACHE_CHECK_MIN }}
-          CONFIG_CHECK_MIN: ${{ secrets.CONFIG_CHECK_MIN }}
-          FILE_TTL_MIN: ${{ secrets.FILE_TTL_MIN }}
-          PERMISSIONS_TTL_MIN: ${{ secrets.PERMISSIONS_TTL_MIN }}
-          BRANCH_HEAD_TTL_MS: ${{ secrets.BRANCH_HEAD_TTL_MS }}
-          REPO_META_TTL_MS: ${{ secrets.REPO_META_TTL_MS }}
-          WEBHOOK_PUSH_INCREMENTAL_MAX_FILES: ${{ secrets.WEBHOOK_PUSH_INCREMENTAL_MAX_FILES }}
-          WEBHOOK_PUSH_SCOPED_INVALIDATION_MAX_FILES: ${{ secrets.WEBHOOK_PUSH_SCOPED_INVALIDATION_MAX_FILES }}
+      - name: Write wrangler secrets file
+        run: node .github/scripts/write-wrangler-secrets.mjs
 
-      - name: Deploy preview to Cloudflare Workers
-        id: deploy-preview
-        if: ${{ inputs.preview-alias != '' }}
-        uses: cloudflare/wrangler-action@v4
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: versions upload --env staging --preview-alias ${{ inputs.preview-alias }} --secrets-file wrangler-secrets.json
-          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Deploy staging to Cloudflare Workers
-        id: deploy-staging
-        if: ${{ inputs.staging-deploy && inputs.preview-alias == '' }}
-        uses: cloudflare/wrangler-action@v4
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: deploy --env staging
-          environment: staging
-          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
-          secrets: |
-            BASE_URL
-            AUTH_PRODUCTION_URL
-            OAUTH_PROXY_SECRET
-            BETTER_AUTH_SECRET
-            CRYPTO_KEY
-            A_GITHUB_APP_PRIVATE_KEY
-            A_GITHUB_APP_CLIENT_SECRET
-            ADMIN_EMAILS
-            A_GITHUB_APP_ID
-            A_GITHUB_APP_NAME
-            A_GITHUB_APP_CLIENT_ID
-            EMAIL_FROM
-            CACHE_CHECK_MIN
-            CONFIG_CHECK_MIN
-            FILE_TTL_MIN
-            PERMISSIONS_TTL_MIN
-            BRANCH_HEAD_TTL_MS
-            REPO_META_TTL_MS
-            WEBHOOK_PUSH_INCREMENTAL_MAX_FILES
-            WEBHOOK_PUSH_SCOPED_INVALIDATION_MAX_FILES
-        env:
-          BASE_URL: ${{ env.BASE_URL || secrets.BASE_URL }}
-          AUTH_PRODUCTION_URL: ${{ secrets.AUTH_PRODUCTION_URL || secrets.BASE_URL }}
-          OAUTH_PROXY_SECRET: ${{ secrets.OAUTH_PROXY_SECRET }}
-          BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET }}
-          CRYPTO_KEY: ${{ secrets.CRYPTO_KEY }}
-          A_GITHUB_APP_PRIVATE_KEY: ${{ secrets.A_GITHUB_APP_PRIVATE_KEY }}
-          A_GITHUB_APP_CLIENT_SECRET: ${{ secrets.A_GITHUB_APP_CLIENT_SECRET }}
-          ADMIN_EMAILS: ${{ secrets.ADMIN_EMAILS }}
-          A_GITHUB_APP_ID: ${{ secrets.A_GITHUB_APP_ID }}
-          A_GITHUB_APP_NAME: ${{ secrets.A_GITHUB_APP_NAME }}
-          A_GITHUB_APP_CLIENT_ID: ${{ secrets.A_GITHUB_APP_CLIENT_ID }}
-          EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
-          CACHE_CHECK_MIN: ${{ secrets.CACHE_CHECK_MIN }}
-          CONFIG_CHECK_MIN: ${{ secrets.CONFIG_CHECK_MIN }}
-          FILE_TTL_MIN: ${{ secrets.FILE_TTL_MIN }}
-          PERMISSIONS_TTL_MIN: ${{ secrets.PERMISSIONS_TTL_MIN }}
-          BRANCH_HEAD_TTL_MS: ${{ secrets.BRANCH_HEAD_TTL_MS }}
-          REPO_META_TTL_MS: ${{ secrets.REPO_META_TTL_MS }}
-          WEBHOOK_PUSH_INCREMENTAL_MAX_FILES: ${{ secrets.WEBHOOK_PUSH_INCREMENTAL_MAX_FILES }}
-          WEBHOOK_PUSH_SCOPED_INVALIDATION_MAX_FILES: ${{ secrets.WEBHOOK_PUSH_SCOPED_INVALIDATION_MAX_FILES }}
-
-      - name: Deploy production to Cloudflare Workers
+      - name: Deploy to Cloudflare Workers
         id: deploy
-        if: ${{ !inputs.staging-deploy && inputs.preview-alias == '' }}
         uses: cloudflare/wrangler-action@v4
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: deploy
+          command: ${{ inputs.preview-alias != '' && format('versions upload --env staging --preview-alias {0} --secrets-file wrangler-secrets.json', inputs.preview-alias) || (inputs.staging-deploy && 'deploy --env staging --secrets-file wrangler-secrets.json' || 'deploy --secrets-file wrangler-secrets.json') }}
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
-          secrets: |
-            BASE_URL
-            AUTH_PRODUCTION_URL
-            OAUTH_PROXY_SECRET
-            BETTER_AUTH_SECRET
-            CRYPTO_KEY
-            A_GITHUB_APP_PRIVATE_KEY
-            A_GITHUB_APP_CLIENT_SECRET
-            ADMIN_EMAILS
-            A_GITHUB_APP_ID
-            A_GITHUB_APP_NAME
-            A_GITHUB_APP_CLIENT_ID
-            EMAIL_FROM
-            CACHE_CHECK_MIN
-            CONFIG_CHECK_MIN
-            FILE_TTL_MIN
-            PERMISSIONS_TTL_MIN
-            BRANCH_HEAD_TTL_MS
-            REPO_META_TTL_MS
-            WEBHOOK_PUSH_INCREMENTAL_MAX_FILES
-            WEBHOOK_PUSH_SCOPED_INVALIDATION_MAX_FILES
-        env:
-          BASE_URL: ${{ env.BASE_URL || secrets.BASE_URL }}
-          AUTH_PRODUCTION_URL: ${{ secrets.AUTH_PRODUCTION_URL || secrets.BASE_URL }}
-          OAUTH_PROXY_SECRET: ${{ secrets.OAUTH_PROXY_SECRET }}
-          BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET }}
-          CRYPTO_KEY: ${{ secrets.CRYPTO_KEY }}
-          A_GITHUB_APP_PRIVATE_KEY: ${{ secrets.A_GITHUB_APP_PRIVATE_KEY }}
-          A_GITHUB_APP_CLIENT_SECRET: ${{ secrets.A_GITHUB_APP_CLIENT_SECRET }}
-          ADMIN_EMAILS: ${{ secrets.ADMIN_EMAILS }}
-          A_GITHUB_APP_ID: ${{ secrets.A_GITHUB_APP_ID }}
-          A_GITHUB_APP_NAME: ${{ secrets.A_GITHUB_APP_NAME }}
-          A_GITHUB_APP_CLIENT_ID: ${{ secrets.A_GITHUB_APP_CLIENT_ID }}
-          EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
-          CACHE_CHECK_MIN: ${{ secrets.CACHE_CHECK_MIN }}
-          CONFIG_CHECK_MIN: ${{ secrets.CONFIG_CHECK_MIN }}
-          FILE_TTL_MIN: ${{ secrets.FILE_TTL_MIN }}
-          PERMISSIONS_TTL_MIN: ${{ secrets.PERMISSIONS_TTL_MIN }}
-          BRANCH_HEAD_TTL_MS: ${{ secrets.BRANCH_HEAD_TTL_MS }}
-          REPO_META_TTL_MS: ${{ secrets.REPO_META_TTL_MS }}
-          WEBHOOK_PUSH_INCREMENTAL_MAX_FILES: ${{ secrets.WEBHOOK_PUSH_INCREMENTAL_MAX_FILES }}
-          WEBHOOK_PUSH_SCOPED_INVALIDATION_MAX_FILES: ${{ secrets.WEBHOOK_PUSH_SCOPED_INVALIDATION_MAX_FILES }}
 
   deploy-widget:
     environment: ${{ inputs.environment }}
