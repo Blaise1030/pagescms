@@ -17,6 +17,7 @@ permissions:
 
 jobs:
   deploy:
+    if: startsWith(github.head_ref, 'feature/')
     uses: ./.github/workflows/deploy.yml
     secrets: inherit
     with:
@@ -24,6 +25,7 @@ jobs:
       environment: preview
 
   comment:
+    if: startsWith(github.head_ref, 'feature/')
     needs: deploy
     runs-on: ubuntu-latest
     permissions:
