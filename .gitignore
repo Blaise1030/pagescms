@@ -2,6 +2,7 @@
 
 # dependencies
 /node_modules
+**/node_modules
 /.pnp
 .pnp.js
 .yarn/install-state.gz
@@ -41,5 +42,6 @@ next-env.d.ts
 # Database
 local.db
 /dist/
+apps/pagescms-widget/dist/
 .vinext/
 .wrangler/
