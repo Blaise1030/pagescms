@@ -44,7 +44,7 @@ jobs:
               '## Preview deployment',
               '',
               `**URL:** ${deploymentUrl}`,
-              `**Preview alias:** \`${previewAlias}\` (on \`pagescms\`)`,
+              `**Preview alias:** \`${previewAlias}\` (on \`pagescms-staging\`)`,
               `**Commit:** \`${sha}\``,
               '',
               '_Updated on each push to this PR._',

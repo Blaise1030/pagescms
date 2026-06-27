@@ -28,5 +28,11 @@
       "name": "EMAIL",
       "remote": true
     }
-  ]
+  ],
+  "env": {
+    "staging": {
+      "name": "pagescms-staging",
+      "preview_urls": true
+    }
+  }
 }

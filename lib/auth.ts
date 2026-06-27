@@ -19,7 +19,7 @@ export const auth = betterAuth({
   baseURL: getBaseUrl(),
   trustedOrigins: [
     "http://localhost:3000",
-    "https://pr-*-pagescms.nocodemonkeys1.workers.dev",
+    "https://pr-*-pagescms-staging.nocodemonkeys1.workers.dev",
   ],
   secret: (process.env.AUTH_SECRET || process.env.BETTER_AUTH_SECRET) as string,
   user: {
