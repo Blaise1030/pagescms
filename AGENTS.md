@@ -1,5 +1,7 @@
 # Agent instructions
 
+The canonical rules for this repository live in [CLAUDE.md](./CLAUDE.md#repository-conventions) (loaded by Claude Code and Cursor).
+
 ## Commits and pull requests
 
 This repo uses [Conventional Commits](https://www.conventionalcommits.org/) for release-please versioning and changelog generation. CI enforces this on every pull request.
@@ -31,6 +33,4 @@ Preview deployments run only for pull requests whose **head branch** starts with
 
 Example: `feature/preview-panel-collapse-toggle`
 
-## Cloud agent branches
-
-When creating branches from Cursor Cloud Agents, still follow conventional commits on every commit. If a preview deployment is required, open the PR from a `feature/` branch (rename or recreate the branch before opening the PR).
+When a preview deployment is required, create or rename the branch to `feature/...` before opening the PR.
