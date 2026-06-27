@@ -27,16 +27,13 @@ Use `settings` for behavior that applies across the whole repository. Typical us
 
 | Key | Description |
 | --- | --- |
-| `url` | Base URL of your deployed site (e.g. `https://yourdomain.com`). Also used as an allowed CORS origin for the site bootstrap API. |
+| `url` | Base URL of your deployed site (e.g. `https://yourdomain.com`). |
 | `preview.defaultOpen` | If `true`, open the preview panel by default when editing an entry. |
-| `origins` | Additional allowed CORS origins for the site bootstrap API (optional). Use for staging or extra deployed sites. |
 
 ```yaml
 settings:
   site:
     url: https://yourdomain.com
-    origins:
-      - https://staging.yourdomain.com
     preview:
       defaultOpen: true
 ```
@@ -99,8 +96,6 @@ settings:
   hide: false
   site:
     url: https://yourdomain.com
-    origins:
-      - https://staging.yourdomain.com
     preview:
       defaultOpen: true
   content:
