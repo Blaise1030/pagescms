@@ -33,7 +33,14 @@
   "env": {
     "staging": {
       "name": "pagescms-staging",
+      "workers_dev": true,
       "preview_urls": true,
+      "assets": {
+        "directory": "dist/client",
+        "not_found_handling": "none",
+        "binding": "ASSETS",
+        "run_worker_first": ["/pagescms-widget.js"]
+      },
       "images": {
         "binding": "IMAGES"
       },

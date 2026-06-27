@@ -100,5 +100,5 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: ${{ inputs.preview-alias != '' && format('versions upload --name pagescms-staging --preview-alias {0} --secrets-file wrangler-secrets.json', inputs.preview-alias) || (inputs.staging-deploy && 'deploy --name pagescms-staging --secrets-file wrangler-secrets.json' || 'deploy --secrets-file wrangler-secrets.json') }}
+          command: ${{ inputs.preview-alias != '' && format('versions upload --env staging --name pagescms-staging --preview-alias {0} --secrets-file wrangler-secrets.json', inputs.preview-alias) || (inputs.staging-deploy && 'deploy --env staging --name pagescms-staging --secrets-file wrangler-secrets.json' || 'deploy --secrets-file wrangler-secrets.json') }}
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
