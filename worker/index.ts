@@ -50,13 +50,14 @@ interface ExecutionContext {
   passThroughOnException(): void;
 }
 
+import { PUBLIC_CORS_HEADERS } from "../lib/public-cors";
+
 const WIDGET_PATH = "/pagescms-widget.js";
 
 function widgetCorsHeaders(): HeadersInit {
   return {
-    "Access-Control-Allow-Origin": "*",
+    ...PUBLIC_CORS_HEADERS,
     "Access-Control-Allow-Methods": "GET, HEAD, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type",
   };
 }
 
