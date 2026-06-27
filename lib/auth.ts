@@ -5,7 +5,6 @@ import { emailOTP, oAuthProxy } from "better-auth/plugins";
 import { db } from "@/db";
 import * as schema from "@/db/schema";
 import { getBaseUrl, getGithubOAuthRedirectUri, getProductionUrl } from "@/lib/base-url";
-import { oauthProductionRedirect } from "@/lib/auth-oauth-preview";
 import { APP_NAME } from "@/lib/brand";
 import { repairLegacyGithubStubOnLogin } from "@/lib/github-legacy-stub-repair";
 import { sendEmail } from "@/lib/mailer";
@@ -184,8 +183,8 @@ export const auth = betterAuth({
   },
   plugins: [
     nextCookies(),
-    oauthProductionRedirect(),
     oAuthProxy({
+      currentURL: getBaseUrl(),
       productionURL: getProductionUrl(),
       secret: process.env.OAUTH_PROXY_SECRET,
     }),
