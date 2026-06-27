@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { getAbsoluteAuthCallbackURL } from "@/lib/auth-callback-url";
 import { useRouter } from "next/navigation";
 import { useMutation } from "@tanstack/react-query";
 import { signIn } from "@/lib/auth-client";
@@ -43,8 +43,8 @@ export function Identities({
     try {
       const result = await signIn.social({
         provider: "github",
-        callbackURL: "/settings",
-        errorCallbackURL: "/settings",
+        callbackURL: getAbsoluteAuthCallbackURL("/settings"),
+        errorCallbackURL: getAbsoluteAuthCallbackURL("/settings"),
       });
       if (result.error?.message) toast.error(result.error.message);
     } finally {

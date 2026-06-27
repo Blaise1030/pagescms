@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { emailOtp, signIn } from "@/lib/auth-client";
 import { getAuthCallbackURL, getSafeRedirect } from "@/lib/auth-redirect";
+import { getAbsoluteAuthCallbackURL } from "@/lib/auth-callback-url";
 import { DASHBOARD_PATH } from "@/lib/routes";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -25,11 +26,12 @@ export function SignIn() {
   const error = searchParams.get("error") || "";
   const redirectParam = searchParams.get("redirect") || "";
   const safeRedirect = getSafeRedirect(redirectParam);
-  const callbackURL = getAuthCallbackURL(safeRedirect);
-  const errorCallbackURL =
+  const callbackURL = getAbsoluteAuthCallbackURL(getAuthCallbackURL(safeRedirect));
+  const errorCallbackURL = getAbsoluteAuthCallbackURL(
     safeRedirect === DASHBOARD_PATH
       ? "/sign-in"
-      : `/sign-in?redirect=${encodeURIComponent(safeRedirect)}`;
+      : `/sign-in?redirect=${encodeURIComponent(safeRedirect)}`,
+  );
 
   const getErrorMessage = (value: string) => {
     if (value.toLowerCase() !== "unable_to_get_user_info") return value;

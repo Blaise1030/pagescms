@@ -4,7 +4,22 @@ import { nextCookies } from "better-auth/next-js";
 import { emailOTP, oAuthProxy } from "better-auth/plugins";
 import { db } from "@/db";
 import * as schema from "@/db/schema";
-import { getBaseUrl, getGithubOAuthRedirectUri, getProductionUrl } from "@/lib/base-url";
+import { getAuthBaseUrlConfig, getGithubOAuthRedirectUri, getOAuthProductionUrl } from "@/lib/base-url";
+
+function requireOAuthProxySecret() {
+  const secret = process.env.OAUTH_PROXY_SECRET?.trim();
+  if (secret) {
+    return secret;
+  }
+
+  if (process.env.NODE_ENV === "production") {
+    throw new Error(
+      "OAUTH_PROXY_SECRET is required in deployed environments. Use the same value on production and preview workers.",
+    );
+  }
+
+  return process.env.BETTER_AUTH_SECRET as string;
+}
 import { APP_NAME } from "@/lib/brand";
 import { repairLegacyGithubStubOnLogin } from "@/lib/github-legacy-stub-repair";
 import { sendEmail } from "@/lib/mailer";
@@ -14,15 +29,7 @@ import { LoginEmailTemplate } from "@/components/email/login";
 import { render } from "@react-email/render";
 
 export const auth = betterAuth({
-  baseURL: getBaseUrl(),
-  trustedOrigins: [
-    "http://localhost:3000",
-    "https://pagescms-staging.nocodemonkeys1.workers.dev",
-    "https://pr-*-pagescms-staging.nocodemonkeys1.workers.dev",
-    ...(process.env.AUTH_PRODUCTION_URL?.trim()
-      ? [getProductionUrl()]
-      : []),
-  ],
+  baseURL: getAuthBaseUrlConfig(),
   secret: (process.env.AUTH_SECRET || process.env.BETTER_AUTH_SECRET) as string,
   user: {
     additionalFields: {
@@ -184,9 +191,8 @@ export const auth = betterAuth({
   plugins: [
     nextCookies(),
     oAuthProxy({
-      currentURL: getBaseUrl(),
-      productionURL: getProductionUrl(),
-      secret: process.env.OAUTH_PROXY_SECRET,
+      productionURL: getOAuthProductionUrl(),
+      secret: requireOAuthProxySecret(),
     }),
     emailOTP({
       expiresIn: 300,
