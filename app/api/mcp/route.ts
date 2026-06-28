@@ -1,6 +1,4 @@
-import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import { authenticateCmsToken } from "@/lib/cms-token";
-import { createPagesCmsMcpServer } from "@/lib/mcp/create-server";
 
 const handleMcpRequest = async (request: Request): Promise<Response> => {
   const auth = await authenticateCmsToken(request.headers.get("authorization"));
@@ -10,6 +8,12 @@ const handleMcpRequest = async (request: Request): Promise<Response> => {
       { status: 401 },
     );
   }
+
+  const [{ WebStandardStreamableHTTPServerTransport }, { createPagesCmsMcpServer }] =
+    await Promise.all([
+      import("@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js"),
+      import("@/lib/mcp/create-server"),
+    ]);
 
   const transport = new WebStandardStreamableHTTPServerTransport({
     sessionIdGenerator: undefined,

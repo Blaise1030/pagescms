@@ -7,7 +7,7 @@ export default defineConfig({
     rsc: {
       build: {
         rolldownOptions: {
-          external: ["react-resizable-panels"],
+          external: ["react-resizable-panels", "@modelcontextprotocol/sdk"],
         },
       },
     },

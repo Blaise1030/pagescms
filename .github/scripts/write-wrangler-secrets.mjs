@@ -13,6 +13,8 @@ const SECRET_NAMES = [
   'A_GITHUB_APP_NAME',
   'A_GITHUB_APP_CLIENT_ID',
   'EMAIL_FROM',
+  'CLOUDFLARE_ACCOUNT_ID',
+  'CLOUDFLARE_API_TOKEN',
   'CACHE_CHECK_MIN',
   'CONFIG_CHECK_MIN',
   'FILE_TTL_MIN',
@@ -23,6 +25,15 @@ const SECRET_NAMES = [
   'WEBHOOK_PUSH_SCOPED_INVALIDATION_MAX_FILES',
 ];
 
+const REQUIRED_SECRETS = [
+  'BASE_URL',
+  'AUTH_PRODUCTION_URL',
+  'OAUTH_PROXY_SECRET',
+  'BETTER_AUTH_SECRET',
+  'CRYPTO_KEY',
+  'EMAIL_FROM',
+];
+
 export function writeWranglerSecrets(overrides = {}) {
   const secrets = Object.fromEntries(
     SECRET_NAMES.map((name) => {
@@ -31,20 +42,10 @@ export function writeWranglerSecrets(overrides = {}) {
     }).filter(Boolean),
   );
 
-  if (!secrets.BASE_URL) {
-    throw new Error('BASE_URL is required for deploy secrets.');
-  }
-
-  if (!secrets.AUTH_PRODUCTION_URL) {
-    throw new Error(
-      'AUTH_PRODUCTION_URL is required for deploy secrets (production OAuth callback URL).',
-    );
-  }
-
-  if (!secrets.OAUTH_PROXY_SECRET) {
-    throw new Error(
-      'OAUTH_PROXY_SECRET is required for deploy secrets. Use the same value on production and preview workers.',
-    );
+  for (const name of REQUIRED_SECRETS) {
+    if (!secrets[name]) {
+      throw new Error(`${name} is required for deploy secrets.`);
+    }
   }
 
   fs.writeFileSync('wrangler-secrets.json', JSON.stringify(secrets));
