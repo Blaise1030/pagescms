@@ -89,11 +89,13 @@ List-root schemas (`list: true`) wrap content in a temporary `listWrapper` objec
 
 ## Roadmap
 
-Next steps from the MCP design:
+Implemented: MCP read/write tools, PAT auth, setup skills, `search_docs` / `get_doc`.
 
-1. **Write operations** — `writeEntry`, `deleteEntry`, `renameEntry` with `commit` and `propose` (PR) modes
-2. **PAT auth** — scoped API tokens for MCP clients
-3. **MCP endpoint** — Streamable HTTP on the Worker
-4. **Docs tools** — `search_docs` / `get_doc` indexed from `content/docs/**`
+Still planned:
+
+1. **`search_content`** — cross-collection search
+2. **`rename_entry`**, media upload, GitHub Actions tools
+3. **OAuth 2.1** for one-click MCP client setup
+4. **Public read API** for scaffolded site runtimes
 
 Internal design specs for contributors live under `docs/superpowers/specs/2026-06-27-*.md` in the repository.

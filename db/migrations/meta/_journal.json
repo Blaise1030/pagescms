@@ -8,6 +8,13 @@
       "when": 1781948000012,
       "tag": "0000_open_forgotten_one",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1782057600000,
+      "tag": "0001_cms_token",
+      "breakpoints": true
     }
   ]
 }

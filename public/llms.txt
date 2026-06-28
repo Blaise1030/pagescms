@@ -1,0 +1,1663 @@
+# PagesCMS documentation (llms.txt)
+
+Machine-readable export of content/docs for AI agents and setup skills.
+Regenerate with: pnpm run generate:llms-txt
+
+---
+## Ai / Content Service
+
+Source: content/docs/ai/content-service.md
+
+# Content service
+
+`lib/content-service.ts` is the shared core for reading repository content. REST API routes and the planned MCP server both call into it, so parsing, schema resolution, and caching behave identically regardless of transport.
+
+Parsing helpers live in `lib/content-parsing.ts` — field codec transforms, collection filtering, and search matching are defined once and reused by the service, reference lookups, and future write paths.
+
+## Context
+
+Every function takes an explicit context instead of reading session or request objects:
+
+```ts
+type ContentServiceContext = {
+  owner: string;
+  repo: string;
+  branch: string;
+  user: User;
+  token: string;
+  config: Config;
+};
+```
+
+Functions that fetch individual files from GitHub also require `octokit` (`ContentServiceReadContext`).
+
+Route handlers build context with helpers:
+
+```ts
+toContentServiceContext({ owner, repo, branch }, { user, token, config })
+toContentServiceReadContext({ owner, repo, branch }, repoContext)
+```
+
+## Read API
+
+### `listCollections(ctx)`
+
+Returns summaries of every entry in `config.object.content` — name, label, type, path, format, extension, and allowed operations.
+
+### `getEntrySchema(ctx, name)`
+
+Resolves a collection or file schema and returns:
+
+- `jsonSchema` — generated from the same Zod validators the UI uses (`generateZodSchema` → `z.toJSONSchema`)
+- `fields` — raw field definitions from `.pages.yml`
+- `format`, `extension`, `list`
+
+This is the contract MCP agents will use before writing content.
+
+### `listEntries(ctx, name, options?)`
+
+Lists entries under a collection path. Options:
+
+| Option | Description |
+| --- | --- |
+| `path` | Collection subdirectory (required — use the schema's root `path`) |
+| `type: "search"` | Enable search filtering |
+| `query` | Search string (with `type: "search"`) |
+| `searchFields` | Fields to match (default `["name"]`; use `fields.title` for frontmatter fields) |
+
+Returns `{ contents, errors }`. Parse errors for individual files are collected in `errors` without failing the whole request.
+
+### `getEntry(ctx, name, path)`
+
+Fetches one schema-backed file: checks cache, falls back to GitHub, parses frontmatter, applies read codecs, returns `{ sha, name, path, contentObject }`.
+
+### `getRawEntry(ctx, path)`
+
+Fetches a file without schema parsing — used for `.pages.yml` settings. Returns `{ sha, name, path, contentObject: { body } }`.
+
+## REST adapters
+
+| Route | Service function |
+| --- | --- |
+| `GET .../collections/[name]` | `listEntries` |
+| `GET .../entries/[path]?name=…` | `getEntry` |
+| `GET .../entries/.pages.yml` (no name) | `getRawEntry` |
+
+## Parsing pipeline
+
+1. **Deserialize** — `parse()` for yaml/json/toml frontmatter (`serializedTypes` in `lib/utils/file.ts`)
+2. **Validate shape** — Zod on write; read path trusts stored files
+3. **Field codecs** — `getCodec(type).read` / `.write` per field type
+4. **Cache** — D1-backed entry and folder caches (`lib/github-cache-file.ts`)
+
+List-root schemas (`list: true`) wrap content in a temporary `listWrapper` object during codec application, matching the UI's edit model.
+
+## Roadmap
+
+Next steps from the MCP design:
+
+1. **Write operations** — `writeEntry`, `deleteEntry`, `renameEntry` with `commit` and `propose` (PR) modes
+2. **PAT auth** — scoped API tokens for MCP clients
+3. **MCP endpoint** — Streamable HTTP on the Worker
+4. **Docs tools** — `search_docs` / `get_doc` indexed from `content/docs/**`
+
+Internal design specs for contributors live under `docs/superpowers/specs/2026-06-27-*.md` in the repository.
+
+---
+
+## Ai
+
+Source: content/docs/ai/index.md
+
+# AI & MCP
+
+PagesCMS is evolving into an **AI-native, git-backed CMS**: structured content in your repository, validated against `.pages.yml`, and editable by humans or AI agents through the same pipeline.
+
+The direction has two parts:
+
+| Part | Role | Status |
+| --- | --- | --- |
+| **Setup Skill** | Interview-driven `.pages.yml` authoring for vibe-coding tools | **Available** — see `skills/setup-pages-cms/` |
+| **MCP server** | Discover, read, and write content via the [Model Context Protocol](https://modelcontextprotocol.io/) | **Available** — `/api/mcp` with PAT auth |
+
+Both parts share one idea: **git is the substrate**. AI edits land as commits (or pull requests), so every change is reviewable, revertable, and attributable.
+
+## What ships today
+
+### Setup Skill (Part 1)
+
+Agent skills live in `skills/setup-pages-cms/`:
+
+- Parent skill — project-type detection and dispatch
+- Sub-skills — `blog`, `docs`, `marketing`
+- Config reference — `content/docs/configuration/` (also exported as `public/llms.txt`)
+
+Run `pnpm run generate:llms-txt` to refresh the machine-readable docs bundle. Validate drafts with `lib/validate-pages-config.ts` before writing `.pages.yml`.
+
+### MCP server (Part 2)
+
+- **Endpoint:** `POST /api/mcp` (Streamable HTTP)
+- **Auth:** Create a token at [Settings → API tokens](/settings/api-tokens), then send `Authorization: Bearer cms_pat_…`
+- **Tools:** `list_collections`, `get_entry_schema`, `list_entries`, `get_entry`, `write_entry`, `delete_entry`, `search_docs`, `get_doc`
+- **Write mode:** `write_entry` and `delete_entry` default to `propose` (branch + PR). Pass `mode: "commit"` for direct commits.
+
+The **content service** (`lib/content-service.ts`) is the shared core used by REST routes and MCP tools.
+
+See [Content service](./content-service) for developer details.
+
+## MCP connection
+
+1. Open [Settings → API tokens](/settings/api-tokens) and create a token.
+2. Configure your MCP client:
+
+```json
+{
+  "mcpServers": {
+    "pagescms": {
+      "url": "https://your-pagescms-host/api/mcp",
+      "headers": {
+        "Authorization": "Bearer cms_pat_YOUR_TOKEN"
+      }
+    }
+  }
+}
+```
+
+3. Call `list_collections` with `owner`, `repo`, and `branch`, then `get_entry_schema` before writing content.
+
+## Roadmap
+
+- `search_content` — cross-collection search
+- `rename_entry`, media upload, GitHub Actions tools
+- OAuth 2.1 for one-click MCP client setup
+- Additional setup sub-skills (portfolio, changelog, catalog)
+
+## Why this matters
+
+- **One integration, many platforms** — MCP is supported by Cursor, Claude Code/Desktop, and other AI builders; one server reaches all of them.
+- **Schema as contract** — agents validate content against the same Zod schemas the UI uses.
+- **Human in the loop** — propose mode opens a PR instead of committing directly; config stays human-owned.
+
+## Related docs
+
+- [Content service](./content-service) — the shared read core and REST adapters
+- [Configuration](../configuration) — `.pages.yml` reference used by setup skills and agents
+- [Quick start](../quick-start) — get a repository running with PagesCMS today
+
+---
+
+## Ai / Setup Skills
+
+Source: content/docs/ai/setup-skills.md
+
+# Setup skills
+
+Part 1 of the AI-age CMS ships as **Agent Skills** in `skills/setup-pages-cms/`. No backend is required — the host agent interviews the user and writes `.pages.yml` into the repository.
+
+## Parent skill
+
+Read `skills/setup-pages-cms/SKILL.md` first. It:
+
+1. Detects project type from the repo (framework, existing content folders)
+2. Dispatches to a specialized sub-skill
+3. Points to `content/docs/configuration/` for the config contract
+4. Validates output with `lib/validate-pages-config.ts`
+5. Previews the schema with the user before writing `.pages.yml`
+
+## Sub-skills
+
+| Skill | Path | Best for |
+| --- | --- | --- |
+| Blog | `skills/setup-pages-cms/blog/SKILL.md` | Posts, authors, tags, cover images |
+| Docs | `skills/setup-pages-cms/docs/SKILL.md` | Nested docs tree, sidebar groups, code fields |
+| Marketing | `skills/setup-pages-cms/marketing/SKILL.md` | Hero, features blocks, FAQ file entries |
+
+## Config reference
+
+- Human docs: [Configuration](../configuration)
+- Machine bundle: `public/llms.txt` (regenerate with `pnpm run generate:llms-txt`)
+- Validation: `validatePagesConfig()` in `lib/validate-pages-config.ts`
+
+## Usage in Cursor
+
+Copy or symlink `skills/setup-pages-cms/` into your project's `.cursor/skills/` directory, or reference the skill from this repository when setting up a new site.
+
+After the schema is written, connect the [MCP server](./index) to populate content.
+
+---
+
+## Configuration / Actions
+
+Source: content/docs/configuration/actions.md
+
+## What actions are
+
+Actions allow you to add custom buttons that trigger GitHub Actions. They can appear:
+
+- at the repository level in the sidebar,
+- in the header of collection pages, collection entry pages, file pages, and media pages.
+
+Actions start a GitHub Actions workflow with `workflow_dispatch` and a `payload` input containing contextual information about the trigger.
+
+## Keys
+
+| Key | Description |
+| --- | --- |
+| `name` * | Internal action name. |
+| `label` * | Button label shown in the UI. |
+| `workflow` * | Workflow file name in `.github/workflows/`. |
+| `ref` | Git ref used to dispatch the workflow. Use `current` for the branch currently open. |
+| `scope` | Collection-only. Values: `collection`, `entry`. |
+| `cancelable` | Whether the run can be cancelled from PagesCMS. Defaults to `true`. |
+| `confirm` | Confirmation dialog config. Use `false` to skip confirmation. |
+| `fields` | Extra input fields collected before dispatch. |
+
+\* Required
+
+## Confirmation
+
+Actions show a confirmation dialog by default. Set `confirm: false` to skip it, or customize the dialog:
+
+```yaml
+actions:
+  - name: deploy-site
+    label: Deploy site
+    workflow: pages-cms-action.yml
+    confirm:
+      title: Deploy site?
+      message: This will trigger the deployment workflow.
+      button: Deploy
+```
+
+## Extra fields
+
+Use `fields` to collect values passed to the workflow via `payload.inputs`. Each field supports `name`, `label`, `type` (`text`, `textarea`, `select`, `checkbox`, `number`), `required`, `default`, and `options`.
+
+```yaml
+actions:
+  - name: deploy-site
+    label: Deploy site
+    workflow: pages-cms-action.yml
+    fields:
+      - name: environment
+        label: Environment
+        type: select
+        required: true
+        default: staging
+        options:
+          - label: Staging
+            value: staging
+          - label: Production
+            value: production
+      - name: force
+        label: Force deploy
+        type: checkbox
+        default: false
+```
+
+## GitHub workflow configuration
+
+Your workflow must accept a `payload` input:
+
+```yaml
+on:
+  workflow_dispatch:
+    inputs:
+      payload:
+        description: Pages CMS payload as JSON
+        required: true
+        type: string
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Parse payload
+        run: echo '${{ inputs.payload }}' | jq .
+```
+
+GitHub Actions must be enabled for the repository and the GitHub App must have **Actions: Write** permission.
+
+---
+
+## Configuration / Collaborators
+
+Source: content/docs/configuration/collaborators.md
+
+## What collaborators are
+
+Collaborators are invited by email.
+
+Use them when someone needs to edit content or media but does not have a GitHub account.
+
+## What collaborators can do
+
+Collaborators can:
+
+- open repositories they were invited to,
+- edit content,
+- edit media.
+
+Content operations (create, rename, delete) still follow the repository configuration for each content entry. See [content.operations](/docs/configuration/content).
+
+## What collaborators cannot do
+
+Collaborators cannot:
+
+- manage `.pages.yml`,
+- manage collaborators,
+- access cache admin features.
+
+Those actions stay limited to GitHub users with repository access.
+
+## How collaborator commits work
+
+Collaborator writes use the GitHub App installation token for the target repository.
+
+By default, Pages CMS does not send the collaborator's name and email as committer metadata.
+
+That means:
+
+- the write is authorized by the GitHub App,
+- the commit uses the authenticated app/installation identity unless commit identity is explicitly set to `user`.
+
+If you want collaborator writes to include the collaborator's name and email as committer metadata, set `settings.commit.identity: user` or override a specific schema with `commit.identity: user`.
+
+## Migration
+
+Collaborators live in the database, not in `.pages.yml`.
+
+If you move to a new Pages CMS install, export and import collaborators separately.
+
+---
+
+## Configuration / Components
+
+Source: content/docs/configuration/components.md
+
+## What `components` does
+
+Use `components` when the same field group appears in multiple places.
+
+Typical examples:
+
+- SEO fields,
+- author objects,
+- call-to-action blocks,
+- repeated metadata groups.
+
+Define the field group once, then reference it from `content`.
+
+## Example
+
+```yaml
+components:
+  seo:
+    type: object
+    label: SEO
+    fields:
+      - name: title
+        type: string
+      - name: description
+        type: text
+
+content:
+  - name: pages
+    type: collection
+    path: content/pages
+    fields:
+      - name: heading
+        type: string
+      - name: seo
+        component: seo
+        label: Meta
+```
+
+## Override behavior
+
+When you reference a component, field-level values can override component values.
+
+In the example above the component label is `SEO`, but the field overrides it to `Meta`. The resolved field behaves as:
+
+```yaml
+- name: seo
+  type: object
+  label: Meta
+  fields:
+    - name: title
+      type: string
+    - name: description
+      type: text
+```
+
+---
+
+## Configuration / Content
+
+Source: content/docs/configuration/content.md
+
+## Overview
+
+`content` defines what editors can edit. Each entry is either:
+
+- a `collection` for many files with the same schema,
+- a `file` for one file with its own schema,
+- a `group` for organizing entries in the sidebar.
+
+`group` is navigation-only. It can contain nested `group`, `collection`, and `file` entries but does not create its own editor route.
+
+## Keys
+
+| Key | Description |
+| --- | --- |
+| `name` * | Unique internal name (e.g. `"posts"`). |
+| `label` | UI label (e.g. `"Blog posts"`). |
+| `type` * | Values: `collection`, `file`, `group`. |
+| `path` * | Folder for collections or file path for single files. Not used by `group`. |
+| `fields` | Field definitions shown in the editor. |
+| `filename` | Collection filename template (e.g. `"{primary}.md"`). |
+| `exclude` | Files to ignore in a collection (e.g. `["README.md"]`). |
+| `format` | File format: `yaml-frontmatter`, `json-frontmatter`, `toml-frontmatter`, `yaml`, `json`, `toml`, `datagrid`, `code`, `raw`. |
+| `delimiters` | Custom frontmatter delimiters (e.g. `"+++"`, `["<!--", "-->"]`). |
+| `subfolders` | `true` or `false`. Enables or disables nested folders in collections. |
+| `list` | Repeat a field as an array, or store a whole file as a top-level array. |
+| `view` | Collection list settings for fields, sorting, search, and tree mode. |
+| `operations` | Per-entry create/rename/delete controls (e.g. `{ delete: false }`). |
+| `commit` | Per-entry commit settings (e.g. `{ identity: "user" }`). |
+| `actions` | Adds collection or file action buttons. |
+| `items` | Child entries inside a `group`. |
+| `site` | Preview path template for this entry. Requires `settings.site.url`. See [Preview](../preview). |
+
+\* Required
+
+## Preview
+
+Each collection or file entry can define a `site.path` template that resolves to the public URL for that entry. Combine with `fields[].preview` to bind CMS fields to DOM elements on the page.
+
+```yaml
+settings:
+  site:
+    url: https://yourdomain.com
+content:
+  - name: posts
+    type: collection
+    path: content/posts
+    site:
+      path: /blog/{{slug}}
+    fields:
+      - name: title
+        type: string
+        preview:
+          target: "#title"
+          bind: text
+```
+
+| Key | Description |
+| --- | --- |
+| `site.path` | URL path template (`{{slug}}`, `{{filename}}`, `{{basename}}`, field names). |
+| `fields[].preview` | DOM binding rule(s) for live preview. See [Preview](../preview#field-bindings). |
+
+## Examples
+
+### Collection
+
+```yaml
+content:
+  - name: posts
+    label: Posts
+    type: collection
+    path: content/posts
+    fields:
+      - name: title
+        type: string
+        preview:
+          target: "#title"
+          bind: text
+      - name: body
+        type: rich-text
+        preview:
+          target: "#body"
+          bind: html
+```
+
+### Single file
+
+```yaml
+content:
+  - name: site
+    label: Site settings
+    type: file
+    path: src/_data/site.json
+    fields:
+      - name: title
+        type: string
+      - name: description
+        type: text
+```
+
+### Group
+
+```yaml
+content:
+  - name: blog
+    label: Blog
+    type: group
+    items:
+      - name: posts
+        label: Posts
+        type: collection
+        path: content/posts
+        fields:
+          - name: title
+            type: string
+      - name: authors
+        label: Authors
+        type: collection
+        path: content/authors
+        fields:
+          - name: name
+            type: string
+```
+
+---
+
+## Configuration
+
+Source: content/docs/configuration/index.md
+
+## What `.pages.yml` does
+
+Place `.pages.yml` at the repository root. PagesCMS reads it per repository and per branch.
+
+## Top-level keys
+
+| Key | Description |
+| --- | --- |
+| `media` | Defines where uploaded files are stored and what URLs are written. |
+| `content` | Defines editable collections and single files. |
+| `components` | Reuses shared field definitions across collections. |
+| `settings` | Sets repository-wide behavior such as merge mode and commit templates. |
+| `actions` | Adds repository-level GitHub Actions buttons. |
+
+## Read order
+
+1. Define `media`.
+2. Define `content`.
+3. Add `components` if fields repeat.
+4. Add `settings` if you need global behavior.
+5. Add `actions` if you want custom workflow buttons.
+
+## Minimal example
+
+```yaml
+media: media
+content:
+  - name: posts
+    label: Posts
+    type: collection
+    path: content/posts
+    fields:
+      - name: title
+        type: string
+      - name: body
+        type: rich-text
+```
+
+## Example with a collection and a single file
+
+```yaml
+media:
+  input: src/media
+  output: /media
+content:
+  - name: posts
+    label: Posts
+    type: collection
+    path: src/posts
+    fields:
+      - name: title
+        type: string
+      - name: body
+        type: rich-text
+  - name: site
+    label: Site settings
+    type: file
+    path: src/_data/site.json
+    fields:
+      - name: title
+        type: string
+      - name: description
+        type: text
+      - name: url
+        type: string
+actions:
+  - name: deploy-site
+    label: Deploy site
+    workflow: pages-cms-action.yml
+```
+
+---
+
+## Configuration / Media
+
+Source: content/docs/configuration/media.md
+
+## What `media` does
+
+`media` defines file storage for image fields, file fields, and rich-text image uploads.
+
+Use it to answer two questions:
+
+1. Where should uploaded files be saved in the repository?
+2. What public path should be written into content?
+
+## Value
+
+You can define `media` as a string, one object, or an array of named media sources.
+
+### String form
+
+```yaml
+media: media
+```
+
+Equivalent to:
+
+```yaml
+media:
+  input: media
+  output: /media
+```
+
+### Single media object
+
+```yaml
+media:
+  input: src/media
+  output: /media
+  rename: random
+  categories: [image]
+```
+
+### Multiple media sources
+
+Use an array when different field types should write to different folders.
+
+```yaml
+media:
+  - name: images
+    label: Images
+    input: media/images
+    output: /media/images
+    rename: safe
+    extensions: [png, jpg, webp]
+  - name: docs
+    label: Documents
+    input: media/docs
+    output: /media/docs
+    categories: [document]
+```
+
+## Keys
+
+| Key | Description |
+| --- | --- |
+| `name` ** | Internal media source name. Required when using an array. |
+| `label` | UI label for the media source. |
+| `input` * | Repository path where files are stored (e.g. `"src/media"`). |
+| `output` * | Public path written into content (e.g. `"/media"`). |
+| `extensions` | Allowed extensions (e.g. `["png", "webp"]`). |
+| `categories` | Category-based extension sets: `image`, `document`, `video`, `audio`, `compressed`, `code`, `font`, `spreadsheet`. |
+| `rename` | Upload renaming. `false` keeps the original filename (default), `true` or `safe` slugifies it, `random` generates a name. |
+| `commit` | Per-media commit settings. |
+| `actions` | Adds media action buttons. |
+
+\* Required · \*\* Required with multiple sources
+
+## Commit templates
+
+`media[].commit.templates` overrides the global commit templates for that media source.
+
+```yaml
+media:
+  - name: images
+    input: media/images
+    output: /media/images
+    commit:
+      templates:
+        create: "chore(media): add {filename}"
+        update: "chore(media): update {filename}"
+        delete: "chore(media): remove {filename}"
+        rename: "chore(media): rename {oldFilename} -> {newFilename}"
+```
+
+---
+
+## Configuration / Settings
+
+Source: content/docs/configuration/settings.md
+
+## What `settings` does
+
+Use `settings` for behavior that applies across the whole repository. Typical uses:
+
+- hide the admin settings page,
+- preserve unmanaged keys when saving structured content,
+- define default commit messages,
+- choose commit identity behavior.
+
+## Keys
+
+| Key | Description |
+| --- | --- |
+| `hide` | If `true`, hides the Settings page in the UI. |
+| `content` | Controls how structured content is saved. |
+| `commit` | Controls commit settings. |
+| `site` | Site URL and preview panel defaults. See [Preview](../preview). |
+
+## Site
+
+`settings.site` configures the public site URL used by the preview panel and admin bar widget.
+
+| Key | Description |
+| --- | --- |
+| `url` | Base URL of your deployed site (e.g. `https://yourdomain.com`). |
+| `preview.defaultOpen` | If `true`, open the preview panel by default when editing an entry. |
+
+```yaml
+settings:
+  site:
+    url: https://yourdomain.com
+    preview:
+      defaultOpen: true
+```
+
+## Content
+
+`settings.content.merge` controls how files outside the schema are handled on save.
+
+| Value | Behavior |
+| --- | --- |
+| `false` | Default. Rewrite the file from the configured schema only. Keys outside the schema are removed. |
+| `true` | Merge submitted fields into the existing file. Keys outside the schema are preserved unless overwritten. |
+
+## Commit
+
+### Commit templates
+
+`settings.commit.templates` defines the default commit message format for content and media changes.
+
+| Key | Default value |
+| --- | --- |
+| `create` | `Create {path} (via Pages CMS)` |
+| `update` | `Update {path} (via Pages CMS)` |
+| `delete` | `Delete {path} (via Pages CMS)` |
+| `rename` | `Rename {oldPath} to {newPath} (via Pages CMS)` |
+
+`content[].commit.templates` and `media[].commit.templates` override these global templates.
+
+Available tokens:
+
+| Token | Description |
+| --- | --- |
+| `{action}` | Current action: `create`, `update`, `delete`, or `rename`. |
+| `{path}` | File path. |
+| `{filename}` | File name only. |
+| `{name}` | Content or media entry name. |
+| `{owner}` | Repository owner. |
+| `{repo}` | Repository name. |
+| `{branch}` | Current branch. |
+| `{userName}` | Current user display name when available. |
+| `{userEmail}` | Current user email when available. |
+| `{oldPath}` | Previous path. Rename only. |
+| `{newPath}` | New path. Rename only. |
+
+### Commit identity
+
+`settings.commit.identity` controls whether PagesCMS sends explicit committer metadata on writes.
+
+| Value | Behavior |
+| --- | --- |
+| `app` | Default. GitHub uses the authenticated writer identity for the request. |
+| `user` | Send the current user's name and email as committer metadata when available. |
+
+`content[].commit.identity` and `media[].commit.identity` override the global setting.
+
+## Example
+
+```yaml
+settings:
+  hide: false
+  site:
+    url: https://yourdomain.com
+    preview:
+      defaultOpen: true
+  content:
+    merge: true
+  commit:
+    identity: user
+    templates:
+      create: "content(create): {path}"
+      update: "content(update): {path}"
+      delete: "content(delete): {path}"
+      rename: "content(rename): {oldPath} -> {newPath}"
+```
+
+---
+
+## Deployment / Cloudflare
+
+Source: content/docs/deployment/cloudflare.md
+
+## What you need
+
+- Node.js 22.18+
+- A Cloudflare account with Workers and D1 enabled
+- A GitHub App for repository access
+- Environment secrets for auth and encryption
+
+## 1. Clone and install
+
+```bash
+git clone https://github.com/Blaise1030/pagescms.git
+cd pagescms
+npm install
+```
+
+## 2. Configure secrets
+
+Create `.env.local` with at least:
+
+```bash
+BETTER_AUTH_SECRET=your-random-secret
+CRYPTO_KEY=your-random-secret
+```
+
+Generate secrets with:
+
+```bash
+openssl rand -base64 32
+```
+
+Full list of required variables:
+
+```bash
+BETTER_AUTH_SECRET=
+CRYPTO_KEY=
+GITHUB_APP_ID=
+GITHUB_APP_PRIVATE_KEY=
+GITHUB_CLIENT_ID=
+GITHUB_CLIENT_SECRET=
+GITHUB_WEBHOOK_SECRET=
+NEXT_PUBLIC_APP_URL=https://cms.example.com
+ADMIN_EMAILS=admin@example.com
+```
+
+## 3. Create the GitHub App
+
+```bash
+npm run setup:github-app -- --base-url https://cms.example.com --env .env.local
+```
+
+After creating the app, enable **Account permissions → Email addresses → Read-only** in GitHub App settings. The setup helper cannot set account permissions in the manifest.
+
+## 4. Apply D1 migrations
+
+```bash
+npm run db:migrate:local   # local dev
+npm run db:migrate         # remote/production D1
+```
+
+## 5. Run locally or deploy
+
+```bash
+npm run dev        # local development
+npm run deploy     # deploy to Cloudflare Workers
+```
+
+## Wrangler configuration
+
+Edit `wrangler.toml` to set your D1 database binding and any KV namespaces before deploying.
+
+## Troubleshooting
+
+- If the GitHub App webhook fails, verify that `GITHUB_WEBHOOK_SECRET` matches what is set in the GitHub App settings.
+- If sign-in fails, confirm `NEXT_PUBLIC_APP_URL` matches the origin of your deployment exactly (no trailing slash).
+- D1 migration errors usually mean the remote database name in `wrangler.toml` does not match what was created in the Cloudflare dashboard.
+
+---
+
+## Documentation
+
+Source: content/docs/index.md
+
+## What PagesCMS is
+
+PagesCMS is an open-source CMS for static sites stored in GitHub repositories. It edits files in your repository directly. There is no separate CMS database for your site content.
+
+This repository is a community fork that runs on Cloudflare Workers with D1 for application data. The editing model and `.pages.yml` configuration follow the upstream PagesCMS project.
+
+## Why it exists
+
+Most static sites do not need a database-backed CMS. They already have:
+
+- content in files,
+- media in the repository,
+- Git history,
+- a deployment flow.
+
+The missing piece is usually the editing experience. PagesCMS gives teams a UI for editing content and media without asking every editor to learn Git.
+
+## How it works
+
+1. Add a `.pages.yml` file to the repository.
+2. Define `content`, `media`, and optional `components` or `settings`.
+3. Sign in to PagesCMS.
+4. Edit content in the UI.
+5. Save changes back to GitHub.
+
+## AI agents & MCP
+
+PagesCMS is building toward [MCP-native content editing](/docs/ai): AI agents will read and write the same schema-validated files through a shared content service. See [AI & MCP](/docs/ai) for the roadmap and [Content service](/docs/ai/content-service) for the developer API available today.
+
+## What PagesCMS does not do
+
+PagesCMS does not replace your site generator, deployment platform, or repository workflow. It only provides the editing layer on top of your existing Git-based project.
+
+---
+
+## Preview / Astro
+
+Source: content/docs/preview/astro.md
+
+# Preview with Astro
+
+Astro sites work well with the widget bridge because pages are rendered as HTML with stable DOM nodes. Install the widget script, configure bindings in `.pages.yml`, and add selectors to your templates.
+
+Unlike the previous preview approach, you do not need a separate `/preview/[slug]` route or a client-side framework island for basic bindings.
+
+## Setup
+
+### 1. Install the widget script
+
+Add the script to your base layout:
+
+```astro
+---
+// src/layouts/Layout.astro
+---
+<html>
+  <body>
+    <slot />
+    <script
+      src="https://your-cms.example/pagescms-widget.js"
+      data-pagescms-origin="https://your-cms.example"
+      data-pagescms-owner="org"
+      data-pagescms-repo="repo"
+      data-pagescms-branch="main"
+    ></script>
+  </body>
+</html>
+```
+
+### 2. Configure preview in `.pages.yml`
+
+```yaml
+settings:
+  site:
+    url: https://yourdomain.com
+content:
+  - name: posts
+    type: collection
+    path: content/posts
+    site:
+      path: /blog/{{slug}}
+    fields:
+      - name: title
+        type: string
+        preview:
+          target: "#post-title"
+          bind: text
+      - name: body
+        type: rich-text
+        preview:
+          target: "#post-body"
+          bind: html
+```
+
+### 3. Add selectors to your page
+
+```astro
+---
+// src/pages/blog/[slug].astro
+import { getCollection } from "astro:content";
+import Layout from "@/layouts/Layout.astro";
+
+const { slug } = Astro.params;
+const post = await getCollection("blog").then((entries) =>
+  entries.find((e) => e.slug === slug)
+);
+const { Content } = await post.render();
+---
+
+<Layout>
+  <article>
+    <h1 id="post-title">{post.data.title}</h1>
+    <div id="post-body">
+      <Content />
+    </div>
+  </article>
+</Layout>
+```
+
+The page is fully static. When it loads inside the CMS preview iframe, the widget updates the bound elements as the editor types.
+
+## How it works
+
+1. Pages CMS builds a URL like `https://yourdomain.com/blog/my-post` from `settings.site.url` and `content[].site.path`.
+2. The real page loads in the preview iframe — no separate preview route is needed.
+3. The widget receives binding updates and updates `#post-title`, `#post-body`, etc. directly.
+
+## Astro with islands
+
+If your content area is a client island (React, Vue, Svelte), place binding targets on static HTML elements outside the island, or ensure the island renders elements with stable selectors on first paint.
+
+For example, bind to a static wrapper rather than content inside a `client:only` island:
+
+```astro
+<article>
+  <h1 id="post-title">{post.data.title}</h1>
+  <div id="post-body">
+    <PostContent client:load post={post} />
+  </div>
+</article>
+```
+
+## Tips
+
+- Astro's zero-JS default is ideal for preview — the widget updates existing DOM nodes without hydration.
+- For markdown `body` fields, use `bind: html` — the CMS converts markdown to HTML before sending.
+- Add `pagescms:*` meta tags if you want the admin bar to link back to the entry (see the [Preview overview](./index#admin-bar-edit-links)).
+
+## Performance notes
+
+- The real page stays fully static — no extra JS is added for preview on public pages.
+- The widget script is the only addition, and DOM updates only run inside the CMS iframe.
+
+---
+
+## Preview
+
+Source: content/docs/preview/index.md
+
+# Preview
+
+Pages CMS supports live preview — editors see their content rendered in a panel as they type, without saving or publishing first.
+
+Preview loads your site in an iframe and pushes field bindings over `postMessage` using the `pagescms-widget.js` bridge script.
+
+## How it works
+
+1. Editor opens an entry. Pages CMS builds a preview URL from `settings.site.url` and `content[].site.path`.
+2. The CMS loads that URL in an iframe and sends `pagescms:preview:hello` until the site bridge is ready.
+3. The widget bridge responds with `pagescms:preview:ready`.
+4. As the editor types, the CMS sends binding updates (debounced 250ms):
+   ```json
+   {
+     "type": "pagescms:preview:update",
+     "bindings": [
+       { "target": "#title", "bind": "text", "value": "Hello world" }
+     ]
+   }
+   ```
+
+If the bridge is not detected within 5 seconds, the CMS shows a warning to install `pagescms-widget.js` and check iframe embedding settings.
+
+## Site script
+
+Add `pagescms-widget.js` to your public site:
+
+```html
+<script
+  src="https://your-cms.example/pagescms-widget.js"
+  data-pagescms-origin="https://your-cms.example"
+  data-pagescms-owner="org"
+  data-pagescms-repo="repo"
+  data-pagescms-branch="main"
+></script>
+```
+
+| Attribute | Description |
+| --- | --- |
+| `data-pagescms-origin` | CMS base URL. Defaults to the script's origin. |
+| `data-pagescms-owner` | GitHub owner for admin bar links. |
+| `data-pagescms-repo` | Repository name. |
+| `data-pagescms-branch` | Branch name (default: `main`). |
+
+The script also provides an admin bar. Activate it with `?pagescms` or `#pagescms` in the URL, or call `window.PagesCMS.show()`.
+
+### Admin bar edit links
+
+For the admin bar to link back to the correct entry, add meta tags to your page:
+
+```html
+<meta name="pagescms:name" content="posts" />
+<meta name="pagescms:type" content="collection" />
+<meta name="pagescms:path" content="content/posts/my-post.md" />
+```
+
+For single files, use `pagescms:type` = `file` and omit `pagescms:path`.
+
+## Configuration
+
+Add site settings and a per-collection path to `.pages.yml`:
+
+```yaml
+settings:
+  site:
+    url: https://yourdomain.com
+    preview:
+      defaultOpen: true
+content:
+  - name: posts
+    site:
+      path: /blog/{{slug}}
+    fields:
+      - name: title
+        type: string
+        preview:
+          target: "#title"
+          bind: text
+```
+
+| Key | Description |
+| --- | --- |
+| `settings.site.url` | Base URL of your deployed site. |
+| `settings.site.preview.defaultOpen` | Open the preview panel by default when editing (optional). |
+| `content[].site.path` | Preview path template (`{{slug}}`, `{{filename}}`, `{{basename}}`, field names). |
+| `fields[].preview` | DOM binding rules for live updates. |
+
+### Path templates
+
+`content[].site.path` is resolved against the current form values and entry file path:
+
+| Token | Source |
+| --- | --- |
+| `{{slug}}` | `slug` field, or filename without extension |
+| `{{filename}}` | Entry filename (e.g. `my-post.md`) |
+| `{{basename}}` | Filename without extension |
+| `{{fieldName}}` | Any field value from the entry |
+
+## Field bindings
+
+Each field can define one or more `preview` rules that map CMS values to DOM elements on the page.
+
+```yaml
+fields:
+  - name: title
+    type: string
+    preview:
+      target: "#title"
+      bind: text
+      transform:
+        - { fallback: "Untitled" }
+  - name: body
+    type: rich-text
+    preview:
+      target: "#body"
+      bind: html
+  - name: published
+    type: boolean
+    preview:
+      target: "#published"
+      bind: checked
+```
+
+A field can also define multiple rules as an array:
+
+```yaml
+preview:
+  - { target: "h1", bind: text }
+  - { target: "meta[property='og:title']", bind: content }
+```
+
+### Bind types
+
+| Bind | Effect |
+| --- | --- |
+| `text` | Sets `textContent` |
+| `html` | Sets `innerHTML` (markdown fields are converted to HTML automatically) |
+| `value` | Sets form element `value` |
+| `src` | Sets image/media `src` |
+| `href` | Sets link `href` |
+| `checked` | Sets checkbox `checked` |
+| `content` | Sets `content` attribute (e.g. meta tags) |
+
+### Transforms
+
+Apply transforms before the value is sent to the page:
+
+```yaml
+transform:
+  - { join: ", " }           # join array values
+  - { date: "MMMM d, yyyy" }  # format dates (date-fns tokens)
+  - { text: capitalize }      # uppercase | lowercase | capitalize
+  - { fallback: "Untitled" }  # use when value is empty
+  - { prefix: "By " }
+  - { suffix: " | My Site" }
+```
+
+### Repeated list bindings
+
+When a field value is an array, the widget updates multiple DOM nodes:
+
+- Use `{n}` in the selector to target indexed elements: `.tag-{n}` matches `.tag-1`, `.tag-2`, etc.
+- Or use a shared selector — the widget clones the first matched node to match the array length.
+
+```yaml
+fields:
+  - name: tags
+    type: string
+    list: true
+    preview:
+      target: ".tag-{n}"
+      bind: text
+```
+
+## Iframe embedding
+
+Your site must allow embedding in the CMS iframe. Remove or relax `X-Frame-Options` and `Content-Security-Policy` `frame-ancestors` restrictions for the CMS origin.
+
+## Migration from the old preview API
+
+Earlier versions used root-level `siteUrl` and `previewPath`, and sent bulk form data via `cms:preview` postMessage events. That protocol has been replaced.
+
+| Old | New |
+| --- | --- |
+| `siteUrl` | `settings.site.url` |
+| `previewPath` | `content[].site.path` |
+| `cms:preview` / `cms:preview:ready` | `pagescms:preview:*` events via `pagescms-widget.js` |
+| Custom `usePreviewData` hooks | `fields[].preview` DOM bindings (no site code required for basic cases) |
+
+## Framework guides
+
+Choose your framework:
+
+- [Next.js](./nextjs)
+- [Nuxt](./nuxt)
+- [SvelteKit](./sveltekit)
+- [Astro](./astro)
+
+## Framework compatibility
+
+Preview updates DOM elements directly via the widget bridge. No framework-specific hooks are required for basic bindings.
+
+| Framework | Integration effort | Notes |
+| --- | --- | --- |
+| Next.js | Low | Add stable selectors to rendered markup |
+| Nuxt | Low | Add stable selectors to templates |
+| SvelteKit | Low | Add stable selectors to markup |
+| Astro (static) | Low | Works on real pages — no separate preview route needed |
+| Astro (with islands) | Low | Bind to static HTML elements outside islands |
+| 11ty / Hugo / Jekyll | Low | Pure HTML sites work well with DOM bindings |
+| Custom SPAs | Medium | Ensure selectors exist after hydration |
+
+For pure static site generators, live preview works well because the widget updates existing DOM nodes without requiring a reactive runtime.
+
+---
+
+## Preview / Nextjs
+
+Source: content/docs/preview/nextjs.md
+
+# Preview with Next.js
+
+Next.js pages can be previewed directly in the CMS iframe. Install the widget script, configure bindings in `.pages.yml`, and add stable DOM selectors to your page markup.
+
+No custom React hooks are required for basic field bindings.
+
+## Setup
+
+### 1. Install the widget script
+
+Add the script to your root layout:
+
+```tsx
+// app/layout.tsx
+export default function RootLayout({ children }) {
+  return (
+    <html>
+      <body>
+        {children}
+        <script
+          src="https://your-cms.example/pagescms-widget.js"
+          data-pagescms-origin="https://your-cms.example"
+          data-pagescms-owner="org"
+          data-pagescms-repo="repo"
+          data-pagescms-branch="main"
+        />
+      </body>
+    </html>
+  );
+}
+```
+
+### 2. Configure preview in `.pages.yml`
+
+```yaml
+settings:
+  site:
+    url: https://yourdomain.com
+content:
+  - name: posts
+    type: collection
+    path: content/posts
+    site:
+      path: /blog/{{slug}}
+    fields:
+      - name: title
+        type: string
+        preview:
+          target: "#post-title"
+          bind: text
+      - name: body
+        type: rich-text
+        preview:
+          target: "#post-body"
+          bind: html
+```
+
+### 3. Add selectors to your page
+
+Add `id` or `class` attributes that match your binding targets:
+
+```tsx
+// app/blog/[slug]/page.tsx
+import { getPost } from "@/lib/posts";
+
+export default async function PostPage({ params }) {
+  const post = await getPost(params.slug);
+
+  return (
+    <article>
+      <h1 id="post-title">{post.title}</h1>
+      <div id="post-body" dangerouslySetInnerHTML={{ __html: post.bodyHtml }} />
+    </article>
+  );
+}
+```
+
+The server component renders the saved content. When the page loads inside the CMS preview iframe, the widget updates the bound elements as the editor types.
+
+## How it works
+
+1. Pages CMS builds a URL like `https://yourdomain.com/blog/my-post` from `settings.site.url` and `content[].site.path`.
+2. The page loads in the preview iframe with `pagescms-widget.js`.
+3. The widget receives binding updates and updates `#post-title`, `#post-body`, etc. directly.
+
+Because bindings target DOM nodes rather than React state, the preview works without client components or `postMessage` listeners in your app code.
+
+## Tips
+
+- Use `id` attributes for unique elements and classes for repeated list items.
+- For markdown `body` fields, use `bind: html` — the CMS converts markdown to HTML before sending.
+- Keep selectors on the narrowest element that should update (e.g. `#post-title` on the `<h1>`, not the whole `<article>`).
+- The widget is a no-op on public pages outside the CMS iframe.
+
+## Performance notes
+
+- Server components still render to HTML — first paint and LCP are unaffected.
+- The widget script is small and only applies DOM updates when inside the CMS iframe.
+- No extra React client components are needed for basic preview bindings.
+
+---
+
+## Preview / Nuxt
+
+Source: content/docs/preview/nuxt.md
+
+# Preview with Nuxt
+
+Nuxt pages can be previewed directly in the CMS iframe. Install the widget script, configure bindings in `.pages.yml`, and add stable DOM selectors to your templates.
+
+No custom composables are required for basic field bindings.
+
+## Setup
+
+### 1. Install the widget script
+
+Add the script to `app.vue` or your default layout:
+
+```vue
+<!-- app.vue -->
+<template>
+  <NuxtPage />
+</template>
+
+<script setup>
+useHead({
+  script: [
+    {
+      src: "https://your-cms.example/pagescms-widget.js",
+      "data-pagescms-origin": "https://your-cms.example",
+      "data-pagescms-owner": "org",
+      "data-pagescms-repo": "repo",
+      "data-pagescms-branch": "main",
+    },
+  ],
+});
+</script>
+```
+
+### 2. Configure preview in `.pages.yml`
+
+```yaml
+settings:
+  site:
+    url: https://yourdomain.com
+content:
+  - name: posts
+    type: collection
+    path: content/posts
+    site:
+      path: /blog/{{slug}}
+    fields:
+      - name: title
+        type: string
+        preview:
+          target: "#post-title"
+          bind: text
+      - name: body
+        type: rich-text
+        preview:
+          target: "#post-body"
+          bind: html
+```
+
+### 3. Add selectors to your page
+
+```vue
+<!-- pages/blog/[slug].vue -->
+<script setup>
+const route = useRoute();
+const { data: post } = await useAsyncData(() =>
+  $fetch(`/api/posts/${route.params.slug}`)
+);
+</script>
+
+<template>
+  <article>
+    <h1 id="post-title">{{ post.title }}</h1>
+    <div id="post-body" v-html="post.bodyHtml" />
+  </article>
+</template>
+```
+
+The server renders the saved content. When the page loads inside the CMS preview iframe, the widget updates the bound elements as the editor types.
+
+## How it works
+
+1. Pages CMS builds a URL like `https://yourdomain.com/blog/my-post` from `settings.site.url` and `content[].site.path`.
+2. The page loads in the preview iframe with `pagescms-widget.js`.
+3. The widget receives binding updates and updates `#post-title`, `#post-body`, etc. directly.
+
+Because bindings target DOM nodes rather than Vue reactivity, the preview works without composables or `postMessage` listeners in your app code.
+
+## Tips
+
+- Use `id` attributes for unique elements and classes for repeated list items.
+- For markdown `body` fields, use `bind: html` — the CMS converts markdown to HTML before sending.
+- The widget is a no-op on public pages outside the CMS iframe.
+
+## Performance notes
+
+- Nuxt still server-renders the page to HTML — first paint and LCP are unaffected.
+- The widget script is small and only applies DOM updates when inside the CMS iframe.
+- No extra client-side composables are needed for basic preview bindings.
+
+---
+
+## Preview / Sveltekit
+
+Source: content/docs/preview/sveltekit.md
+
+# Preview with SvelteKit
+
+SvelteKit pages can be previewed directly in the CMS iframe. Install the widget script, configure bindings in `.pages.yml`, and add stable DOM selectors to your markup.
+
+No custom stores or `postMessage` listeners are required for basic field bindings.
+
+## Setup
+
+### 1. Install the widget script
+
+Add the script to `src/app.html`:
+
+```html
+<!-- src/app.html -->
+<body data-sveltekit-preload-data="hover">
+  <div style="display: contents">%sveltekit.body%</div>
+  <script
+    src="https://your-cms.example/pagescms-widget.js"
+    data-pagescms-origin="https://your-cms.example"
+    data-pagescms-owner="org"
+    data-pagescms-repo="repo"
+    data-pagescms-branch="main"
+  ></script>
+</body>
+```
+
+### 2. Configure preview in `.pages.yml`
+
+```yaml
+settings:
+  site:
+    url: https://yourdomain.com
+content:
+  - name: posts
+    type: collection
+    path: content/posts
+    site:
+      path: /blog/{{slug}}
+    fields:
+      - name: title
+        type: string
+        preview:
+          target: "#post-title"
+          bind: text
+      - name: body
+        type: rich-text
+        preview:
+          target: "#post-body"
+          bind: html
+```
+
+### 3. Add selectors to your page
+
+```svelte
+<!-- src/routes/blog/[slug]/+page.svelte -->
+<script>
+  export let data;
+</script>
+
+<article>
+  <h1 id="post-title">{data.post.title}</h1>
+  <div id="post-body">{@html data.post.bodyHtml}</div>
+</article>
+```
+
+```ts
+// src/routes/blog/[slug]/+page.server.ts
+export async function load({ params }) {
+  const post = await getPost(params.slug);
+  return { post };
+}
+```
+
+The server renders the saved content. When the page loads inside the CMS preview iframe, the widget updates the bound elements as the editor types.
+
+## How it works
+
+1. Pages CMS builds a URL like `https://yourdomain.com/blog/my-post` from `settings.site.url` and `content[].site.path`.
+2. The page loads in the preview iframe with `pagescms-widget.js`.
+3. The widget receives binding updates and updates `#post-title`, `#post-body`, etc. directly.
+
+Because bindings target DOM nodes rather than Svelte stores, the preview works without client-side bridge code in your app.
+
+## Tips
+
+- Use `id` attributes for unique elements and classes for repeated list items.
+- For markdown `body` fields, use `bind: html` — the CMS converts markdown to HTML before sending.
+- The widget is a no-op on public pages outside the CMS iframe.
+
+## Performance notes
+
+- SvelteKit still server-renders the page to HTML — first paint and LCP are unaffected.
+- The widget script is small and only applies DOM updates when inside the CMS iframe.
+- No extra client-side stores are needed for basic preview bindings.
+
+---
+
+## Quick Start
+
+Source: content/docs/quick-start.md
+
+## Use your instance
+
+1. Go to the sign-in page and authenticate with GitHub.
+2. Install the GitHub App on the account or organization that owns your repository.
+3. Open the repository you want to edit.
+4. Create `.pages.yml` when prompted.
+5. Start editing.
+
+## Minimal config
+
+Use this as a first working config:
+
+```yaml
+media: media
+content:
+  - name: pages
+    label: Pages
+    type: collection
+    path: docs
+    fields:
+      - name: title
+        type: string
+      - name: body
+        type: rich-text
+```
+
+This gives you:
+
+- one media folder at `media/`,
+- one editable collection at `docs/`,
+- a `title` field,
+- a rich-text `body` field.
+
+## What to do next
+
+1. Add more fields.
+2. Configure media storage.
+3. Adjust filenames and collection view.
+4. Deploy your own instance if you are not using a hosted deployment.

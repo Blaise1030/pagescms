@@ -11,49 +11,60 @@ The direction has two parts:
 
 | Part | Role | Status |
 | --- | --- | --- |
-| **Setup Skill** | Interview-driven `.pages.yml` authoring for vibe-coding tools | Planned |
-| **MCP server** | Discover, read, and write content via the [Model Context Protocol](https://modelcontextprotocol.io/) | In progress |
+| **Setup Skill** | Interview-driven `.pages.yml` authoring for vibe-coding tools | **Available** — see `skills/setup-pages-cms/` |
+| **MCP server** | Discover, read, and write content via the [Model Context Protocol](https://modelcontextprotocol.io/) | **Available** — `/api/mcp` with PAT auth |
 
 Both parts share one idea: **git is the substrate**. AI edits land as commits (or pull requests), so every change is reviewable, revertable, and attributable.
 
 ## What ships today
 
-This repository now includes a **content service** — a framework-agnostic core extracted from the REST API routes. It is the foundation the MCP server will call into.
+### Setup Skill (Part 1)
 
-Read operations are implemented today:
+Agent skills live in `skills/setup-pages-cms/`:
 
-- `listCollections` — summarize content entries from `.pages.yml`
-- `getEntrySchema` — JSON Schema + field list for a collection
-- `listEntries` — collection listing with search
-- `getEntry` / `getRawEntry` — fetch and parse a single file
+- Parent skill — project-type detection and dispatch
+- Sub-skills — `blog`, `docs`, `marketing`
+- Config reference — `content/docs/configuration/` (also exported as `public/llms.txt`)
 
-REST routes for entries and collections already delegate to this service. Write operations (`writeEntry`, `deleteEntry`, propose-via-PR mode) and the MCP endpoint are next.
+Run `pnpm run generate:llms-txt` to refresh the machine-readable docs bundle. Validate drafts with `lib/validate-pages-config.ts` before writing `.pages.yml`.
+
+### MCP server (Part 2)
+
+- **Endpoint:** `POST /api/mcp` (Streamable HTTP)
+- **Auth:** Create a token at [Settings → API tokens](/settings/api-tokens), then send `Authorization: Bearer cms_pat_…`
+- **Tools:** `list_collections`, `get_entry_schema`, `list_entries`, `get_entry`, `write_entry`, `delete_entry`, `search_docs`, `get_doc`
+- **Write mode:** `write_entry` and `delete_entry` default to `propose` (branch + PR). Pass `mode: "commit"` for direct commits.
+
+The **content service** (`lib/content-service.ts`) is the shared core used by REST routes and MCP tools.
 
 See [Content service](./content-service) for developer details.
 
-## Setup Skill (planned)
+## MCP connection
 
-A family of Agent Skills (`setup-pages-cms` + per-project-type sub-skills) will interview you about your site and produce a valid `.pages.yml`:
+1. Open [Settings → API tokens](/settings/api-tokens) and create a token.
+2. Configure your MCP client:
 
-- Detect or ask project type (blog, docs, marketing site, portfolio, …)
-- Run a type-specific interview (collections, fields, media, operations)
-- Validate against the same schema the CMS uses at runtime
-- Write `.pages.yml` into the repo — no backend required
+```json
+{
+  "mcpServers": {
+    "pagescms": {
+      "url": "https://your-pagescms-host/api/mcp",
+      "headers": {
+        "Authorization": "Bearer cms_pat_YOUR_TOKEN"
+      }
+    }
+  }
+}
+```
 
-Skills source the config contract from the [Configuration](../configuration) docs so guidance stays in sync with the product.
+3. Call `list_collections` with `owner`, `repo`, and `branch`, then `get_entry_schema` before writing content.
 
-## MCP server (planned)
+## Roadmap
 
-The MCP server exposes repo content to Claude, Cursor, and other MCP clients:
-
-| Tool group | Examples |
-| --- | --- |
-| Discover | `list_collections`, `get_entry_schema` |
-| Read | `list_entries`, `get_entry`, `search_content` |
-| Write | `write_entry`, `delete_entry`, `rename_entry` (`commit` or `propose` PR mode) |
-| Docs | `search_docs`, `get_doc` — sourced from this documentation |
-
-Authentication will start with scoped API tokens (PAT), with OAuth 2.1 for one-click client setup later. Agent access never exceeds the connecting user's GitHub permissions.
+- `search_content` — cross-collection search
+- `rename_entry`, media upload, GitHub Actions tools
+- OAuth 2.1 for one-click MCP client setup
+- Additional setup sub-skills (portfolio, changelog, catalog)
 
 ## Why this matters
 

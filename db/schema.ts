@@ -204,6 +204,21 @@ const actionRunTable = sqliteTable("action_run", {
   idx_action_run_workflowRunId: uniqueIndex("idx_action_run_workflowRunId").on(table.workflowRunId),
 }));
 
+const cmsTokenTable = sqliteTable("cms_token", {
+  id: text("id").notNull().primaryKey(),
+  userId: text("user_id").notNull().references(() => userTable.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  tokenHash: text("token_hash").notNull(),
+  tokenPrefix: text("token_prefix").notNull(),
+  scopes: text("scopes", { mode: "json" }).notNull().$type<{ read: boolean; write: boolean }>(),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull().$defaultFn(() => new Date()),
+  lastUsedAt: integer("last_used_at", { mode: "timestamp" }),
+  expiresAt: integer("expires_at", { mode: "timestamp" }),
+}, table => ({
+  idx_cms_token_userId: index("idx_cms_token_userId").on(table.userId),
+  uq_cms_token_hash: uniqueIndex("uq_cms_token_hash").on(table.tokenHash),
+}));
+
 export {
   userTable,
   sessionTable,
@@ -217,4 +232,5 @@ export {
   cacheFileMetaTable,
   cachePermissionTable,
   actionRunTable,
+  cmsTokenTable,
 };

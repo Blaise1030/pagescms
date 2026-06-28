@@ -97,6 +97,10 @@ export const docsNavigation: DocsNavItem[] = [
         title: "Content service",
         href: "/docs/ai/content-service",
       },
+      {
+        title: "Setup skills",
+        href: "/docs/ai/setup-skills",
+      },
     ],
   },
   {
