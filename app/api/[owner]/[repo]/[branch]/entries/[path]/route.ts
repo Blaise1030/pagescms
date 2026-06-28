@@ -1,204 +1,105 @@
 import { type NextRequest } from "next/server";
-import { getCachedEntryContent, setCachedEntryContent } from "@/lib/github-cache-file";
-import { getCodec } from "@/app/(main)/[owner]/[repo]/[branch]/_fields/registry";
-import { deepMap, getSchemaByName } from "@/lib/schema";
-import { parse } from "@/lib/serialization";
-import { getFileExtension, normalizePath } from "@/lib/utils/file";
 import { assertGithubIdentity } from "@/lib/authz-shared";
 import { createHttpError } from "@/lib/api-error";
 import { withRepoContext } from "@/lib/api-repo-context";
+import { getEntry } from "@/lib/content-service";
 import { decodeBase64Utf8 } from "@/lib/encoding";
+import { normalizePath } from "@/lib/utils/file";
 
 /**
  * Fetches and parses individual file contents from GitHub repositories
  * (usually for editing).
- * 
+ *
  * GET /api/[owner]/[repo]/[branch]/entries/[path]?name=[schemaName]
- * 
+ *
  * Requires authentication. If no schema name is provided, we return the raw
  * contents.
  */
 
 export async function GET(
   request: NextRequest,
-  context: { params: Promise<{ owner: string, repo: string, branch: string, path: string }> }
+  context: { params: Promise<{ owner: string; repo: string; branch: string; path: string }> },
 ) {
   const params = await context.params;
 
   return withRepoContext(
     { owner: params.owner, repo: params.repo, branch: params.branch },
     async (req, ctx) => {
-      const { user, token, config: repoConfig, octokit } = ctx;
+      const { user, config: repoConfig } = ctx;
 
-    const searchParams = req.nextUrl.searchParams;
-    const name = searchParams.get("name");
-    const metaOnly =
-      searchParams.get("meta") === "true" ||
-      searchParams.get("meta") === "1";
-    
-    const normalizedPath = normalizePath(params.path);
-    if (normalizedPath === ".pages.yml") {
-      assertGithubIdentity(user, "Only GitHub users can access settings.");
-    }
+      const searchParams = req.nextUrl.searchParams;
+      const name = searchParams.get("name");
+      const metaOnly = searchParams.get("meta") === "true" || searchParams.get("meta") === "1";
 
-    if (!name && normalizedPath !== ".pages.yml") {
-      throw createHttpError("If no content entry name is provided, the path must be \".pages.yml\".", 400);
-    }
-
-    if (!name && normalizedPath === ".pages.yml" && metaOnly) {
-      return Response.json({
-        status: "success",
-        data: {
-          sha: repoConfig?.sha ?? null,
-          version: repoConfig?.version ?? null,
-          lastCheckedAt: repoConfig?.lastCheckedAt ?? null,
-        },
-      });
-    }
-
-    let config;
-    let schema;
-
-    if (name) {
-      config = repoConfig;
-      if (!config) throw createHttpError(`Configuration not found for ${params.owner}/${params.repo}/${params.branch}.`, 404);
-
-      schema = getSchemaByName(config.object, name);
-      if (!schema) throw createHttpError(`Schema not found for ${name}.`, 404);
-
-      if (!normalizedPath.startsWith(schema.path)) throw createHttpError(`Invalid path "${params.path}" for ${schema.type} "${name}".`, 400);
-
-      const extension = schema.extension ?? "";
-      if (getFileExtension(normalizedPath) !== extension) {
-        throw createHttpError(`Invalid extension "${getFileExtension(normalizedPath)}" for ${schema.type} "${name}".`, 400);
+      const normalizedPath = normalizePath(params.path);
+      if (normalizedPath === ".pages.yml") {
+        assertGithubIdentity(user, "Only GitHub users can access settings.");
       }
-    } else {
-      config = {};
-    }
-    
-    if (name) {
-      const cached = await getCachedEntryContent(
-        params.owner,
-        params.repo,
-        params.branch,
-        normalizedPath,
-      );
-      if (cached) {
-        const contentObject = parseContent(cached.content, schema, config);
+
+      if (!name && normalizedPath !== ".pages.yml") {
+        throw createHttpError(
+          'If no content entry name is provided, the path must be ".pages.yml".',
+          400,
+        );
+      }
+
+      if (!name && normalizedPath === ".pages.yml" && metaOnly) {
         return Response.json({
           status: "success",
           data: {
-            sha: cached.sha,
-            name: normalizedPath.includes("/")
-              ? normalizedPath.substring(normalizedPath.lastIndexOf("/") + 1)
-              : normalizedPath,
-            path: normalizedPath,
-            contentObject,
+            sha: repoConfig?.sha ?? null,
+            version: repoConfig?.version ?? null,
+            lastCheckedAt: repoConfig?.lastCheckedAt ?? null,
           },
         });
       }
-    }
 
-    let response;
-    try {
-      response = await octokit.rest.repos.getContent({
+      const serviceCtx = {
+        ...ctx,
         owner: params.owner,
         repo: params.repo,
-        path: normalizedPath,
-        ref: params.branch,
-      });
-    } catch (error: any) {
-      if (error?.status === 404) {
-        throw createHttpError("Not found", 404);
+        branch: params.branch,
+      };
+
+      if (name) {
+        const data = await getEntry(serviceCtx, name, params.path);
+        return Response.json({ status: "success", data });
       }
-      throw error;
-    }
 
-    if (Array.isArray(response.data)) {
-      throw createHttpError("Expected a file but found a directory", 400);
-    } else if (response.data.type !== "file") {
-      throw createHttpError("Invalid response type", 500);
-    }
+      let response;
+      try {
+        response = await ctx.octokit.rest.repos.getContent({
+          owner: params.owner,
+          repo: params.repo,
+          path: normalizedPath,
+          ref: params.branch,
+        });
+      } catch (error: unknown) {
+        if ((error as { status?: number })?.status === 404) {
+          throw createHttpError("Not found", 404);
+        }
+        throw error;
+      }
 
-    const content = decodeBase64Utf8(response.data.content);
+      if (Array.isArray(response.data)) {
+        throw createHttpError("Expected a file but found a directory", 400);
+      }
+      if (response.data.type !== "file") {
+        throw createHttpError("Invalid response type", 500);
+      }
 
-    if (name) {
-      await setCachedEntryContent(
-        params.owner,
-        params.repo,
-        params.branch,
-        normalizedPath,
-        content,
-        response.data.sha,
-        response.data.size ?? 0,
-      ).catch(() => {});
-    }
+      const content = decodeBase64Utf8(response.data.content);
 
-    const contentObject = name
-      ? parseContent(content, schema, config)
-      : { body: content };
-
-    return Response.json({
-      status: "success",
-      data: {
-        sha: response.data.sha,
-        name: response.data.name,
-        path: response.data.path,
-        contentObject,
-      },
-    });
+      return Response.json({
+        status: "success",
+        data: {
+          sha: response.data.sha,
+          name: response.data.name,
+          path: response.data.path,
+          contentObject: { body: content },
+        },
+      });
     },
     request,
   );
 }
-
-// Parse the entry into an object based on the content schema.
-const parseContent = (
-  content: string,
-  schema: Record<string, any>,
-  config: Record<string, any>
-) => {
-  const serializedTypes = ["yaml-frontmatter", "json-frontmatter", "toml-frontmatter", "yaml", "json", "toml"];
-  
-  let contentObject: Record<string, any> = {};
-
-  if (serializedTypes.includes(schema && schema.format) && schema.fields && schema.fields.length > 0) {
-    // If we are dealing with a serialized format and we have fields defined
-    try {
-      contentObject = parse(content, { format: schema.format, delimiters: schema.delimiters });
-      // We resort to the same trick as with the client, wrapping things in a listWrapper object if we're dealing with a list at the root
-      let entryFields;
-      if (schema.list) {
-        contentObject = { listWrapper: contentObject };
-        entryFields = [{
-          name: "listWrapper",
-          type: "object",
-          list: true,
-          fields: schema.fields
-        }]
-      } else {
-        entryFields = schema.fields;
-      }
-
-      contentObject = deepMap(
-        contentObject,
-        entryFields,
-        (value, field) => {
-          const type = field.type;
-          const read = typeof type === 'string' ? getCodec(type)?.read : undefined;
-          if (read) {
-            return read(value, field, config);
-          }
-          return value;
-        }
-      );
-      if (schema.list) contentObject = contentObject.listWrapper;
-    } catch (error: any) {
-      throw createHttpError(`Error parsing frontmatter: ${error.message}`, 400);
-    }
-  } else {
-    contentObject = { body: content };
-  }
-  
-  return contentObject; 
-};
