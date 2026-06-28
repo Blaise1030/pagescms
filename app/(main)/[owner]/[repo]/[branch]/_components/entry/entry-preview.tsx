@@ -6,13 +6,6 @@ import { AlertCircle, ArrowUpRight, LoaderCircle } from "lucide-react";
 import { useConfig } from "@/app/(main)/[owner]/[repo]/[branch]/_contexts/config-context";
 import { buildSiteUrl, collectPreviewBindings } from "@/lib/site";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import type { Field } from "@/types/field";
 
 const PREVIEW_HELLO_EVENT = "pagescms:preview:hello";
@@ -124,76 +117,71 @@ export function EntryPreview({
 
   if (!previewUrl) {
     return (
-      <Card className="overflow-hidden">
-        <CardHeader>
-          <CardTitle>Preview</CardTitle>
-          <CardDescription>
-            Configure <code>settings.site.url</code> and{" "}
-            <code>content[].site.path</code> to enable iframe preview.
-          </CardDescription>
-        </CardHeader>
-      </Card>
+      <div className="flex h-full items-center justify-center p-4 text-sm text-muted-foreground">
+        <p>
+          Configure <code>settings.site.url</code> and{" "}
+          <code>content[].site.path</code> to enable iframe preview.
+        </p>
+      </div>
     );
   }
 
   return (
-    <Card className="overflow-hidden h-full flex flex-col">
-      <CardHeader className="border-b shrink-0">
-        <div className="flex items-start gap-3">
-          <div className="min-w-0 flex-1">
-            <CardTitle>Preview</CardTitle>
-            <CardDescription className="truncate">{previewUrl}</CardDescription>
-          </div>
-          <Button asChild size="sm" variant="outline">
-            <a href={previewUrl} target="_blank" rel="noreferrer">
-              Open
-              <ArrowUpRight className="ml-1 size-3.5" />
-            </a>
-          </Button>
+    <div className="flex h-full min-h-0 flex-col">
+      <div className="flex shrink-0 items-center gap-3 px-3 py-2">
+        <p className="min-w-0 flex-1 truncate text-sm text-muted-foreground">
+          {previewUrl}
+        </p>
+        <Button asChild size="sm" variant="outline" className="shrink-0">
+          <a href={previewUrl} target="_blank" rel="noreferrer">
+            Open
+            <ArrowUpRight className="ml-1 size-3.5" />
+          </a>
+        </Button>
+      </div>
+
+      {showBridgeWarning && (
+        <div className="flex shrink-0 items-start gap-2 border-y border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">
+          <AlertCircle className="mt-0.5 size-4 shrink-0" />
+          <p>
+            Live bindings were not detected. Install{" "}
+            <code>pagescms-widget.js</code> on the public site and make sure the
+            site allows iframe embedding.
+          </p>
         </div>
-      </CardHeader>
-      <CardContent className="relative flex-1 p-0">
-        {showBridgeWarning && (
-          <div className="flex items-start gap-2 border-b border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">
-            <AlertCircle className="mt-0.5 size-4 shrink-0" />
-            <p>
-              Live bindings were not detected. Install{" "}
-              <code>pagescms-widget.js</code> on the public site and make sure the
-              site allows iframe embedding.
-            </p>
-          </div>
-        )}
-        {bridgeDebugMessage && (
-          <div
-            className={
-              bridgeDebugLevel === "warn"
-                ? "flex items-start gap-2 border-b border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950"
-                : "flex items-start gap-2 border-b border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-950"
-            }
-          >
-            <AlertCircle className="mt-0.5 size-4 shrink-0" />
-            <p>{bridgeDebugMessage}</p>
-          </div>
-        )}
-        <div className="relative h-full">
-          {!isFrameLoaded && (
-            <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/80">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <LoaderCircle className="size-4 animate-spin" />
-                Loading preview…
-              </div>
+      )}
+
+      {bridgeDebugMessage && (
+        <div
+          className={
+            bridgeDebugLevel === "warn"
+              ? "flex shrink-0 items-start gap-2 border-y border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950"
+              : "flex shrink-0 items-start gap-2 border-y border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-950"
+          }
+        >
+          <AlertCircle className="mt-0.5 size-4 shrink-0" />
+          <p>{bridgeDebugMessage}</p>
+        </div>
+      )}
+
+      <div className="relative min-h-0 flex-1">
+        {!isFrameLoaded && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/80">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <LoaderCircle className="size-4 animate-spin" />
+              Loading preview…
             </div>
-          )}
-          <iframe
-            key={previewUrl}
-            ref={iframeRef}
-            src={previewUrl}
-            title="Preview"
-            onLoad={() => setIsFrameLoaded(true)}
-            className="absolute inset-0 h-full w-full border-0"
-          />
-        </div>
-      </CardContent>
-    </Card>
+          </div>
+        )}
+        <iframe
+          key={previewUrl}
+          ref={iframeRef}
+          src={previewUrl}
+          title="Preview"
+          onLoad={() => setIsFrameLoaded(true)}
+          className="absolute inset-0 h-full w-full border-0"
+        />
+      </div>
+    </div>
   );
 }
