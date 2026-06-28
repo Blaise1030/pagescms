@@ -52,10 +52,12 @@ reachable everywhere — under the `gitcms.dev` brand.
 A **family of Skills** the host agent runs: a parent `setup-pages-cms` that
 detects/asks the project type, dispatching to a specialized sub-skill (blog,
 docs, marketing, portfolio, changelog, catalog, knowledge-base). Each
-sub-skill carries its own interview script + schema template + field
-guidance, because the right questions and schema shape genuinely differ by
-project type. Output **must validate** against `ConfigSchema`
-(`lib/config-schema.ts`). It writes `.pages.yml` into the repo — no backend.
+sub-skill carries its own interview script + schema idiom, because the right
+questions and schema shape genuinely differ by project type. The skill
+**sources the config contract from the documentation**
+(`content/docs/configuration/*.md`) rather than hand-duplicating it, so it
+never drifts; `ConfigSchema` (`lib/config-schema.ts`) remains the validation
+backstop. It writes `.pages.yml` into the repo — no backend.
 
 Optionally it also scaffolds runtime content-fetching code + types (the
 codegen that does **not** belong in the MCP server). Full detail:

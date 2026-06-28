@@ -71,31 +71,60 @@ carries its own interview script + schema template + field guidance.
    content-fetching code + TS types so the built site can render the content
    (this is the codegen previously mis-placed in the MCP server).
 
-## The hard constraint: valid config
+## Knowledge source: the documentation (single source of truth)
 
-The skill embeds the `.pages.yml` contract so output always parses:
+The skill **does not hand-duplicate the `.pages.yml` contract**. It sources
+its config knowledge from the existing documentation in
+`content/docs/configuration/` — which is already the authoritative,
+maintained, human-facing spec for the format:
 
-- **Field types** (from the field registry): `string`, `text`, `rich-text`,
-  `number`, `boolean`, `date`, `select`, `image`, `file`, `reference`,
-  `code`, `uuid`; structural: `object`, `block` (+ `list: true` for arrays).
-- **Content entry types**: `collection` (folder of entries), `file` (single
-  entry), `group` (sidebar grouping).
-- **Formats**: `yaml-frontmatter` (default), `json/toml-frontmatter`, plain
-  `yaml/json/toml`, `datagrid`, `code`, `raw`.
-- **Per-collection**: `path`, `view` (layout/sort/search/primary),
-  `filename`, `operations` (create/rename/delete), `subfolders`.
-- **`media`** config (input/output paths, extensions, categories).
+| Doc | Teaches |
+| --- | --- |
+| `configuration/content.md` | `collection` / `file` / `group`, `path`, `format`, `filename`, `view`, `subfolders`, `list`, `operations` |
+| `configuration/media.md` | `media` (input/output paths, extensions, categories) |
+| `configuration/components.md` | reusable `components` + `object`/`block` |
+| `configuration/settings.md` | top-level `settings`, commit identity/templates |
+| `configuration/actions.md` | `actions` / workflow triggers |
+| `content.md` field table | the field types (`string`, `text`, `rich-text`, `number`, `boolean`, `date`, `select`, `image`, `file`, `reference`, `code`, `uuid`; structural `object`/`block`) |
 
-The skill should treat `ConfigSchema` as ground truth and, where the host
-environment allows, validate its draft before writing.
+Why source from docs rather than embed:
+
+- **No drift.** Docs are maintained as the product evolves; the skill stays
+  correct automatically instead of going stale against a hand-copied spec.
+- **One place to change.** New field type or key → update the doc, the skill
+  follows.
+- **Reuses existing work.** These docs already exist and render on the docs
+  site.
+
+### How the skill consumes the docs
+
+- **Primary:** bundle the `content/docs/configuration/*.md` files into the
+  skill at build time (or reference them), so the skill teaches from the
+  live contract.
+- **Alternative:** fetch from the published docs site, ideally a
+  machine-readable bundle (an `llms.txt` / concatenated docs export) so any
+  host environment can pull the current spec. (This dovetails with the
+  "content-out for AIs" idea — worth generating regardless.)
+- **Backstop:** `ConfigSchema` (`lib/config-schema.ts`) remains the
+  validation ground truth. Where the host can execute it, validate the draft
+  before writing; otherwise the CMS rejects invalid config on load.
+
+The per-project-type sub-skills add *opinion* (which collections/fields suit
+a blog vs a catalog) on top of the docs' *facts* (what keys/types are
+valid). Docs supply the grammar; sub-skills supply the idiom.
 
 ## Scope
 
 - Parent skill `setup-pages-cms` (project-type detection + dispatch).
 - Sub-skills: `blog`, `docs`, `marketing`, `portfolio`, `changelog`,
   `catalog`, `knowledge-base` (start with blog + docs + marketing).
-- Each: `SKILL.md` (interview script + schema template + field guidance);
-  optional helper to emit/validate `.pages.yml`.
+- Each: `SKILL.md` (interview script + schema template + idiom guidance) —
+  the *opinion* layer, kept thin.
+- A shared **config-docs bundle** the sub-skills reference for the *facts*
+  (sourced from `content/docs/configuration/*.md`), plus the pipeline that
+  produces/refreshes it (bundle at build time, or publish a machine-readable
+  docs export / `llms.txt`).
+- Optional helper to emit/validate `.pages.yml` against `ConfigSchema`.
 - Optional runtime scaffold per framework target (react-vite, next).
 
 ## Out of scope
@@ -114,6 +143,11 @@ backend Part 1's *generated code* depends on; the skill itself needs none.
 
 ## Open questions
 
+- Docs-as-source mechanism: bundle the markdown at skill build time vs fetch
+  a published `llms.txt`/docs export at runtime. (Lean: publish a
+  machine-readable docs export and bundle a snapshot for offline use.)
+- Should we generate the docs export (`llms.txt`) now, since it benefits
+  both the skill and the broader "content-out for AIs" goal?
 - Skill distribution: published Agent Skills, an MCP "prompt"/skill served
   by the host, or both? (Lovable exposes chat connectors; confirm how it
   surfaces skills.)
