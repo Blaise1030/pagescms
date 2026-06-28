@@ -1,5 +1,19 @@
 # Changelog
 
+## [3.9.0-alpha.1](https://github.com/Blaise1030/pagescms/compare/pagescms-v3.8.0-alpha.1...pagescms-v3.9.0-alpha.1) (2026-06-28)
+
+
+### Features
+
+* extract content-service core for ai-age cms mcp ([da607e9](https://github.com/Blaise1030/pagescms/commit/da607e9c7696543c3f4cd5978e79730fb875b675))
+* extract content-service core for ai-age cms mcp ([7888ee1](https://github.com/Blaise1030/pagescms/commit/7888ee1ddba0df8851d2ab1ec48fe44ee91ad0b3))
+* implement setup skills and mcp server (parts 1 and 2) ([27c1337](https://github.com/Blaise1030/pagescms/commit/27c133732056eec7289f04f2953cefc3cf9c28fb))
+
+
+### Bug Fixes
+
+* **auth:** restore sign-in on preview deployments ([6b99152](https://github.com/Blaise1030/pagescms/commit/6b991529392633444d1d9872956ec7abe9f592fe))
+
 ## [3.8.0-alpha.1](https://github.com/Blaise1030/pagescms/compare/pagescms-v3.7.1-alpha.1...pagescms-v3.8.0-alpha.1) (2026-06-27)
 
 
