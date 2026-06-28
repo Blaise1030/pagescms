@@ -204,19 +204,27 @@ export const auth = betterAuth({
         if (type !== "sign-in") return;
 
         const subject = `Your ${APP_NAME} temporary code is ${otp}`;
-        const html = await render(
-          LoginEmailTemplate({
-            email,
-            otp,
-            preview: subject,
-          }),
-        );
+        try {
+          const html = await render(
+            LoginEmailTemplate({
+              email,
+              otp,
+              preview: subject,
+            }),
+          );
 
-        await sendEmail({
-          to: email,
-          subject,
-          html,
-        });
+          await sendEmail({
+            to: email,
+            subject,
+            html,
+          });
+        } catch (error) {
+          console.error("[auth] sendVerificationOTP failed", {
+            email,
+            error: error instanceof Error ? error.message : String(error),
+          });
+          throw error;
+        }
       },
     }),
   ],

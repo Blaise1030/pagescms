@@ -28,6 +28,10 @@ The missing piece is usually the editing experience. PagesCMS gives teams a UI f
 4. Edit content in the UI.
 5. Save changes back to GitHub.
 
+## AI agents & MCP
+
+PagesCMS is building toward [MCP-native content editing](/docs/ai): AI agents will read and write the same schema-validated files through a shared content service. See [AI & MCP](/docs/ai) for the roadmap and [Content service](/docs/ai/content-service) for the developer API available today.
+
 ## What PagesCMS does not do
 
 PagesCMS does not replace your site generator, deployment platform, or repository workflow. It only provides the editing layer on top of your existing Git-based project.

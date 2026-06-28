@@ -32,7 +32,8 @@
     "auth:generate": "npx @better-auth/cli generate --config ./lib/auth.ts --output ./auth-schema.ts --yes",
     "db:clear-cache": "npx tsx db/scripts/clear-cache.ts",
     "db:collaborators:export": "npx tsx db/scripts/collaborators/export.ts",
-    "db:collaborators:import": "npx tsx db/scripts/collaborators/import.ts"
+    "db:collaborators:import": "npx tsx db/scripts/collaborators/import.ts",
+    "generate:llms-txt": "node scripts/generate-llms-txt.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",
@@ -52,6 +53,7 @@
     "@fontsource-variable/jetbrains-mono": "^5.2.8",
     "@hookform/resolvers": "^3.10.0",
     "@ltd/j-toml": "^1.38.0",
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "@next/env": "^16.1.6",
     "@octokit/app": "^16.1.2",
     "@octokit/rest": "^22.0.1",

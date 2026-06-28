@@ -90,6 +90,8 @@ jobs:
         env:
           BASE_URL: ${{ inputs.preview-alias != '' && format('https://{0}-pagescms-staging.nocodemonkeys1.workers.dev', inputs.preview-alias) || (inputs.staging-deploy && 'https://pagescms-staging.nocodemonkeys1.workers.dev' || secrets.BASE_URL) }}
           AUTH_PRODUCTION_URL: ${{ secrets.AUTH_PRODUCTION_URL || secrets.BASE_URL }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: node .github/scripts/write-wrangler-secrets.mjs
 
       - name: Deploy preview to staging

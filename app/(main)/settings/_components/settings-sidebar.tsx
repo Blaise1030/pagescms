@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ArrowLeft, Palette, User } from "lucide-react";
+import { ArrowLeft, KeyRound, Palette, User } from "lucide-react";
 import { DASHBOARD_PATH } from "@/lib/routes";
 import {
   Sidebar,
@@ -23,6 +23,7 @@ const settingsNav = [
     items: [
       { key: "profile", label: "Profile", href: "/settings", icon: <User className="size-4" /> },
       { key: "preferences", label: "Preferences", href: "/settings/preferences", icon: <Palette className="size-4" /> },
+      { key: "api-tokens", label: "API tokens", href: "/settings/api-tokens", icon: <KeyRound className="size-4" /> },
     ],
   },
 ];
