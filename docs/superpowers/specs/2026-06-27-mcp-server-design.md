@@ -125,6 +125,8 @@ be feature-flagged once A is proven.
 | `search_content` | Cross-collection text search (uses existing cache where available). |
 | `upload_media` | Write to the media folder per `media` config. |
 | `list_actions` / `run_action` | Trigger configured GitHub Actions workflows (deploy, etc.). |
+| `search_docs` | Retrieve relevant documentation chunks for a query (config/content conventions). |
+| `get_doc` | Return a full documentation page by slug. |
 
 ### Write modes (the trust knob)
 
@@ -134,6 +136,43 @@ be feature-flagged once A is proven.
 - `"propose"` — commit to a generated branch + open a PR. This is the
   default we'd recommend for agents: human reviews the diff before it's
   live. Reuses commit templates for the PR title/body.
+
+### Documentation (so agents author correctly)
+
+An agent that knows the *tools* still needs to know the *conventions* — how
+`.pages.yml` is shaped, what field types and formats exist, how `view`/
+`operations`/`media` work. Rather than bake that into tool descriptions
+(which bloats every session) or rely on the model's priors (which drift),
+the server exposes the same documentation the setup skill sources from:
+`content/docs/`. This is the **single source of truth** shared across the
+setup skill (Part 1) and the MCP server (Part 2).
+
+Two surfaces, both backed by the existing docs loader (`lib/docs-content-
+loader.ts` / `content/docs/**`):
+
+- **MCP Resources** — expose docs as readable resources (e.g.
+  `docs://configuration/content`), so clients that support resources can
+  list/attach them on demand. Good for "show me the config reference."
+- **Tools** — `search_docs(query)` returns the most relevant chunks (FTS /
+  embeddings over the docs), `get_doc(slug)` returns a full page. Works on
+  every client even where MCP resources aren't supported, and keeps token
+  cost low (retrieve only what's needed) versus dumping all docs.
+
+Design notes:
+
+- **Index once, reuse.** Build a docs index (chunk + FTS, optionally
+  embeddings) at deploy time from `content/docs/**`. The same index can back
+  `search_content`-style retrieval and a published `llms.txt` export.
+- **Two doc scopes:** *product docs* (how the CMS/config works — static,
+  repo-independent) and *this-repo context* (the live `.pages.yml` +
+  `get_entry_schema`, which is repo-specific). `search_docs` covers the
+  former; the discover tools cover the latter. An agent typically reads a
+  bit of both before writing.
+- **Versioning:** pin docs to the deployed app version so guidance matches
+  the running server's behavior.
+- **Cheap win, early:** `search_docs` is low-risk, read-only, and
+  dramatically improves write quality — worth shipping in the read-tools
+  phase, before write tools.
 
 ## 7. Validation & error contract
 
@@ -162,14 +201,17 @@ be feature-flagged once A is proven.
 
 1. **Refactor** route logic into `lib/content-service.ts` (+ unit tests).
 2. **PAT auth** + `cms_token` table + Settings UI to mint tokens.
-3. **MCP endpoint** on the Worker with core read tools
+3. **Docs index + `search_docs` / `get_doc`** (and MCP resources) from
+   `content/docs/**`. Read-only, low-risk, lifts write quality — ship with
+   the read tools.
+4. **MCP endpoint** on the Worker with core read tools
    (`list_collections`, `get_entry_schema`, `list_entries`, `get_entry`,
    `search_content`).
-4. **Write tools** (`write_entry`, `delete_entry`, `rename_entry`) with
+5. **Write tools** (`write_entry`, `delete_entry`, `rename_entry`) with
    `commit` + `propose` modes.
-5. **Media + actions** tools.
-6. **Dynamic per-collection tools** (option B) behind a flag.
-7. **OAuth 2.1** for one-click client connection.
+6. **Media + actions** tools.
+7. **Dynamic per-collection tools** (option B) behind a flag.
+8. **OAuth 2.1** for one-click client connection.
 
 ## 10. Open questions
 

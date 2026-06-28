@@ -73,6 +73,9 @@ groups:
 3. **Write** — `write_entry`, `delete_entry`, `rename_entry`, with
    `mode: "commit" | "propose"` (propose = branch + PR; default for agents)
 4. **Assets / automation** — `upload_media`, `list_actions`, `run_action`
+5. **Docs** — `search_docs`, `get_doc` (+ MCP resources) sourced from
+   `content/docs/**` so agents author against current conventions — the
+   *same docs single-source the setup skill uses*
 
 Static generic tools first; dynamic per-collection tools (from `.pages.yml`)
 behind a flag later. **`scaffold_client` is removed from the MCP server** —
@@ -137,10 +140,11 @@ writes on the git data API. Bounded by the D1 cache. Detail:
 **Part 2 (needs the core):**
 4. Extract `lib/content-service.ts` (+ tests; fold in GraphQL handshake).
 5. PAT auth + `cms_token` + Settings UI.
-6. MCP endpoint: Discover + Read (`search_content` on GraphQL aliases).
-7. Public read API.
-8. Write tools (`commit` + `propose`); media + actions.
-9. Dynamic per-collection tools; OAuth 2.1; per-platform connection guides.
+6. Docs index + `search_docs`/`get_doc` (+ resources) from `content/docs/**`.
+7. MCP endpoint: Discover + Read (`search_content` on GraphQL aliases).
+8. Public read API.
+9. Write tools (`commit` + `propose`); media + actions.
+10. Dynamic per-collection tools; OAuth 2.1; per-platform connection guides.
 
 Part 1 and Part 2 are independently shippable; Part 1 has no backend
 dependency and can land first.
