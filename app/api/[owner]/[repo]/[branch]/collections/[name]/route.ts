@@ -2,7 +2,7 @@ export const maxDuration = 30;
 
 import { type NextRequest } from "next/server";
 import { getRepoReadContext } from "@/lib/api-repo-context";
-import { listEntries } from "@/lib/content-service";
+import { listEntries, toContentServiceContext } from "@/lib/content-service";
 import { toErrorResponse } from "@/lib/api-error";
 
 /**
@@ -30,14 +30,7 @@ export async function GET(
     const fields = searchParams.get("fields")?.split(",") || ["name"];
 
     const data = await listEntries(
-      {
-        user,
-        token,
-        config,
-        owner: params.owner,
-        repo: params.repo,
-        branch: params.branch,
-      },
+      toContentServiceContext(params, { user, token, config }),
       params.name,
       {
         path,

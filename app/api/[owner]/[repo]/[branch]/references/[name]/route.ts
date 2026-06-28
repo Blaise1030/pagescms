@@ -2,15 +2,14 @@ export const maxDuration = 30;
 
 import { type NextRequest } from "next/server";
 import { parse } from "@/lib/serialization";
-import { getCodec } from "@/app/(main)/[owner]/[repo]/[branch]/_fields/registry";
 import {
   getDateFromFilename,
-  getFieldByPath,
   getPrimaryField,
   getSchemaByName,
   interpolate,
   safeAccess,
 } from "@/lib/schema";
+import { isSerializedSchema, pickAndTransformFields } from "@/lib/content-parsing";
 import { getRepoReadContext } from "@/lib/api-repo-context";
 import { normalizePath } from "@/lib/utils/file";
 import { getCollectionCache } from "@/lib/github-cache-file";
@@ -145,7 +144,6 @@ const parseReferenceItems = (
   selectedFields: string[],
   primaryField?: string,
 ): ParsedReferenceItem[] => {
-  const serializedTypes = ["yaml-frontmatter", "json-frontmatter", "toml-frontmatter", "yaml", "json", "toml"];
   const excludedFiles = schema.exclude || [];
 
   return contents.reduce<ParsedReferenceItem[]>((acc, item: any) => {
@@ -159,7 +157,7 @@ const parseReferenceItems = (
 
       let contentObject: Record<string, any> = {};
 
-      if (serializedTypes.includes(schema.format) && schema.fields) {
+      if (isSerializedSchema(schema)) {
         try {
           const parsedObject = parse(item.content, { format: schema.format, delimiters: schema.delimiters });
           contentObject = pickAndTransformFields(parsedObject, schema.fields, selectedFields, config);
@@ -198,52 +196,3 @@ const resolveReferenceFieldPaths = (
     }
     return [token];
   });
-
-const pickAndTransformFields = (
-  parsedObject: Record<string, any>,
-  schemaFields: any[],
-  fieldPaths: string[],
-  config: Record<string, any>,
-) => {
-  const output: Record<string, any> = {};
-  const dedupedPaths = Array.from(new Set(fieldPaths));
-
-  dedupedPaths.forEach((fieldPath) => {
-    if (fieldPath === "name" || fieldPath === "path") return;
-
-    const normalizedFieldPath = fieldPath.startsWith("fields.") ? fieldPath.replace(/^fields\./, "") : fieldPath;
-    const field = getFieldByPath(schemaFields, normalizedFieldPath);
-    if (!field) return;
-
-    let value = safeAccess(parsedObject, normalizedFieldPath);
-    const read = typeof field.type === "string" ? getCodec(field.type)?.read : undefined;
-    if (read) {
-      const transformedValue = read(value, field, config);
-      if (transformedValue !== undefined) value = transformedValue;
-    }
-
-    setByPath(output, normalizedFieldPath, value);
-  });
-
-  return output;
-};
-
-const setByPath = (target: Record<string, any>, path: string, value: any) => {
-  if (!path) return;
-
-  const segments = path.split(".");
-  let cursor = target;
-
-  segments.forEach((segment, index) => {
-    const isLeaf = index === segments.length - 1;
-    if (isLeaf) {
-      cursor[segment] = value;
-      return;
-    }
-
-    if (!cursor[segment] || typeof cursor[segment] !== "object") {
-      cursor[segment] = {};
-    }
-    cursor = cursor[segment];
-  });
-};

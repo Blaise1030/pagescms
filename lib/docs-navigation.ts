@@ -86,6 +86,20 @@ export const docsNavigation: DocsNavItem[] = [
     ],
   },
   {
+    title: "AI & MCP",
+    href: "/docs/ai",
+    items: [
+      {
+        title: "Overview",
+        href: "/docs/ai",
+      },
+      {
+        title: "Content service",
+        href: "/docs/ai/content-service",
+      },
+    ],
+  },
+  {
     title: "Deployment",
     href: "/docs/deployment/cloudflare",
     items: [

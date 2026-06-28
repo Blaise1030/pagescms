@@ -11,8 +11,8 @@ import {
   getEntrySchema,
   listCollections,
   listEntries,
-  parseEntryContent,
 } from "@/lib/content-service";
+import { parseEntryContent } from "@/lib/content-parsing";
 
 const mockConfig = {
   owner: "acme",

@@ -1,43 +1,34 @@
-import { getCodec } from "@/app/(main)/[owner]/[repo]/[branch]/_fields/registry";
 import type { RepoContext } from "@/lib/api-repo-context";
 import { createHttpError } from "@/lib/api-error";
+import {
+  filterEntriesForView,
+  matchesSearchQuery,
+  parseCollectionContents,
+  parseEntryContent,
+} from "@/lib/content-parsing";
 import { decodeBase64Utf8 } from "@/lib/encoding";
 import {
   getCachedEntryContent,
   getCollectionCache,
   setCachedEntryContent,
 } from "@/lib/github-cache-file";
-import {
-  deepMap,
-  generateZodSchema,
-  getDateFromFilename,
-  getFieldByPath,
-  getSchemaByName,
-  safeAccess,
-} from "@/lib/schema";
-import { parse } from "@/lib/serialization";
+import { generateZodSchema, getSchemaByName } from "@/lib/schema";
 import { getFileExtension, normalizePath } from "@/lib/utils/file";
 import type { Config } from "@/types/config";
 import type { User } from "@/types/user";
 import type { Field } from "@/types/field";
 import { z } from "zod";
 
-const SERIALIZED_FORMATS = [
-  "yaml-frontmatter",
-  "json-frontmatter",
-  "toml-frontmatter",
-  "yaml",
-  "json",
-  "toml",
-] as const;
-
-type ContentServiceContext = {
-  user: User;
-  token: string;
-  config: Config;
+type RepoRef = {
   owner: string;
   repo: string;
   branch: string;
+};
+
+type ContentServiceContext = RepoRef & {
+  user: User;
+  token: string;
+  config: Config;
 };
 
 type ContentServiceReadContext = ContentServiceContext & Pick<RepoContext, "octokit">;
@@ -79,6 +70,54 @@ type ListEntriesOptions = {
   query?: string;
   searchFields?: string[];
   type?: "search";
+};
+
+const toContentServiceContext = (
+  ref: RepoRef,
+  ctx: Pick<RepoContext, "user" | "token" | "config">,
+): ContentServiceContext => ({
+  ...ref,
+  user: ctx.user,
+  token: ctx.token,
+  config: ctx.config,
+});
+
+const toContentServiceReadContext = (
+  ref: RepoRef,
+  ctx: RepoContext,
+): ContentServiceReadContext => ({
+  ...toContentServiceContext(ref, ctx),
+  octokit: ctx.octokit,
+});
+
+const assertValidCollectionPath = (schema: Record<string, unknown>, path: string, name: string) => {
+  const normalizedPath = normalizePath(path);
+  if (!normalizedPath.startsWith(schema.path as string)) {
+    throw createHttpError(`Invalid path "${path}" for collection "${name}".`, 400);
+  }
+
+  if (schema.subfolders === false && normalizedPath !== schema.path) {
+    throw createHttpError(`Invalid path "${path}" for collection "${name}".`, 400);
+  }
+
+  return normalizedPath;
+};
+
+const assertValidEntryPath = (schema: Record<string, unknown>, path: string, name: string) => {
+  const normalizedPath = normalizePath(path);
+  if (!normalizedPath.startsWith(schema.path as string)) {
+    throw createHttpError(`Invalid path "${path}" for ${schema.type} "${name}".`, 400);
+  }
+
+  const extension = (schema.extension as string) ?? "";
+  if (getFileExtension(normalizedPath) !== extension) {
+    throw createHttpError(
+      `Invalid extension "${getFileExtension(normalizedPath)}" for ${schema.type} "${name}".`,
+      400,
+    );
+  }
+
+  return normalizedPath;
 };
 
 const listCollections = (ctx: ContentServiceContext): CollectionSummary[] => {
@@ -124,14 +163,7 @@ const listEntries = async (
   const schema = getSchemaByName(ctx.config.object, name);
   if (!schema) throw createHttpError(`Schema not found for ${name}.`, 404);
 
-  const normalizedPath = normalizePath(options.path ?? "");
-  if (!normalizedPath.startsWith(schema.path)) {
-    throw createHttpError(`Invalid path "${options.path ?? ""}" for collection "${name}".`, 400);
-  }
-
-  if (schema.subfolders === false && normalizedPath !== schema.path) {
-    throw createHttpError(`Invalid path "${options.path ?? ""}" for collection "${name}".`, 400);
-  }
+  const normalizedPath = assertValidCollectionPath(schema, options.path ?? "", name);
 
   let entries = await getCollectionCache(
     ctx.owner,
@@ -142,35 +174,7 @@ const listEntries = async (
     schema.view?.node?.filename,
   );
 
-  if (schema.view?.node?.filename) {
-    entries = entries.filter(
-      (item: Record<string, unknown>) =>
-        item.isNode ||
-        item.parentPath === schema.path ||
-        item.name !== schema.view.node.filename,
-    );
-  }
-
-  const hideDirs = schema.view?.node?.hideDirs;
-  if (hideDirs && ["all", "nodes", "others"].includes(hideDirs)) {
-    if (hideDirs === "all") {
-      entries = entries.filter((item: Record<string, unknown>) => item.type !== "dir");
-    } else {
-      entries = entries.filter(
-        (item: Record<string, unknown>) =>
-          item.type !== "dir" ||
-          (hideDirs === "others"
-            ? entries.some(
-                (subItem: Record<string, unknown>) =>
-                  subItem.parentPath === item.path && subItem.isNode,
-              )
-            : !entries.some(
-                (subItem: Record<string, unknown>) =>
-                  subItem.parentPath === item.path && subItem.isNode,
-              )),
-      );
-    }
-  }
+  entries = filterEntriesForView(entries, schema);
 
   const searchFields = options.searchFields ?? ["name"];
   let result = parseCollectionContents(entries, schema, ctx.config.object, searchFields);
@@ -185,39 +189,10 @@ const listEntries = async (
   return result;
 };
 
-const getEntry = async (
+const fetchGithubFile = async (
   ctx: ContentServiceReadContext,
-  name: string,
-  path: string,
-): Promise<GetEntryResult> => {
-  const schema = getSchemaByName(ctx.config.object, name);
-  if (!schema) throw createHttpError(`Schema not found for ${name}.`, 404);
-
-  const normalizedPath = normalizePath(path);
-  if (!normalizedPath.startsWith(schema.path)) {
-    throw createHttpError(`Invalid path "${path}" for ${schema.type} "${name}".`, 400);
-  }
-
-  const extension = schema.extension ?? "";
-  if (getFileExtension(normalizedPath) !== extension) {
-    throw createHttpError(
-      `Invalid extension "${getFileExtension(normalizedPath)}" for ${schema.type} "${name}".`,
-      400,
-    );
-  }
-
-  const cached = await getCachedEntryContent(ctx.owner, ctx.repo, ctx.branch, normalizedPath);
-  if (cached) {
-    return {
-      sha: cached.sha,
-      name: normalizedPath.includes("/")
-        ? normalizedPath.substring(normalizedPath.lastIndexOf("/") + 1)
-        : normalizedPath,
-      path: normalizedPath,
-      contentObject: parseEntryContent(cached.content, schema, ctx.config.object),
-    };
-  }
-
+  normalizedPath: string,
+): Promise<{ sha: string; name: string; path: string; content: string; size: number }> => {
   let response;
   try {
     response = await ctx.octokit.rest.repos.getContent({
@@ -239,236 +214,80 @@ const getEntry = async (
     throw createHttpError("Invalid response type", 500);
   }
 
-  const content = decodeBase64Utf8(response.data.content);
+  return {
+    sha: response.data.sha,
+    name: response.data.name,
+    path: response.data.path,
+    content: decodeBase64Utf8(response.data.content),
+    size: response.data.size ?? 0,
+  };
+};
+
+const getRawEntry = async (
+  ctx: ContentServiceReadContext,
+  path: string,
+): Promise<GetEntryResult> => {
+  const normalizedPath = normalizePath(path);
+  const file = await fetchGithubFile(ctx, normalizedPath);
+
+  return {
+    sha: file.sha,
+    name: file.name,
+    path: file.path,
+    contentObject: { body: file.content },
+  };
+};
+
+const getEntry = async (
+  ctx: ContentServiceReadContext,
+  name: string,
+  path: string,
+): Promise<GetEntryResult> => {
+  const schema = getSchemaByName(ctx.config.object, name);
+  if (!schema) throw createHttpError(`Schema not found for ${name}.`, 404);
+
+  const normalizedPath = assertValidEntryPath(schema, path, name);
+
+  const cached = await getCachedEntryContent(ctx.owner, ctx.repo, ctx.branch, normalizedPath);
+  if (cached) {
+    return {
+      sha: cached.sha,
+      name: normalizedPath.includes("/")
+        ? normalizedPath.substring(normalizedPath.lastIndexOf("/") + 1)
+        : normalizedPath,
+      path: normalizedPath,
+      contentObject: parseEntryContent(cached.content, schema, ctx.config.object),
+    };
+  }
+
+  const file = await fetchGithubFile(ctx, normalizedPath);
 
   await setCachedEntryContent(
     ctx.owner,
     ctx.repo,
     ctx.branch,
     normalizedPath,
-    content,
-    response.data.sha,
-    response.data.size ?? 0,
+    file.content,
+    file.sha,
+    file.size,
   ).catch(() => {});
 
   return {
-    sha: response.data.sha,
-    name: response.data.name,
-    path: response.data.path,
-    contentObject: parseEntryContent(content, schema, ctx.config.object),
+    sha: file.sha,
+    name: file.name,
+    path: file.path,
+    contentObject: parseEntryContent(file.content, schema, ctx.config.object),
   };
-};
-
-const parseEntryContent = (
-  content: string,
-  schema: Record<string, unknown>,
-  config: Record<string, unknown>,
-): Record<string, unknown> => {
-  const format = schema.format as string | undefined;
-  const fields = schema.fields as Field[] | undefined;
-
-  if (format && SERIALIZED_FORMATS.includes(format as (typeof SERIALIZED_FORMATS)[number]) && fields?.length) {
-    try {
-      let contentObject = parse(content, {
-        format,
-        delimiters: schema.delimiters as string | undefined,
-      });
-
-      let entryFields: Field[];
-      if (schema.list) {
-        contentObject = { listWrapper: contentObject };
-        entryFields = [
-          {
-            name: "listWrapper",
-            type: "object",
-            list: true,
-            fields,
-          },
-        ];
-      } else {
-        entryFields = fields;
-      }
-
-      contentObject = deepMap(contentObject, entryFields, (value, field) => {
-        const type = field.type;
-        const read = typeof type === "string" ? getCodec(type)?.read : undefined;
-        return read ? read(value, field, config) : value;
-      });
-
-      if (schema.list) return (contentObject as Record<string, unknown>).listWrapper as Record<string, unknown>;
-      return contentObject;
-    } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : String(error);
-      throw createHttpError(`Error parsing frontmatter: ${message}`, 400);
-    }
-  }
-
-  return { body: content };
-};
-
-const parseCollectionContents = (
-  contents: Record<string, unknown>[],
-  schema: Record<string, unknown>,
-  config: Record<string, unknown>,
-  selectedFields?: string[],
-): ListEntriesResult => {
-  const format = schema.format as string | undefined;
-  const fields = schema.fields as Field[] | undefined;
-  const excludedFiles = (schema.exclude as string[]) ?? [];
-  const extension = (schema.extension as string) ?? "";
-
-  const parsedErrors: string[] = [];
-  const parsedContents = contents
-    .map((item) => {
-      if (
-        item.type === "file" &&
-        (extension === "" || String(item.path).endsWith(`.${extension}`)) &&
-        !excludedFiles.includes(String(item.name))
-      ) {
-        let contentObject: Record<string, unknown> = {};
-
-        if (format && SERIALIZED_FORMATS.includes(format as (typeof SERIALIZED_FORMATS)[number]) && fields) {
-          try {
-            const parsedObject = parse(String(item.content), {
-              format,
-              delimiters: schema.delimiters as string | undefined,
-            });
-
-            if (selectedFields?.length) {
-              const requestedFieldPaths = selectedFields
-                .filter((fieldPath) => fieldPath !== "path")
-                .map((fieldPath) =>
-                  fieldPath.startsWith("fields.") ? fieldPath.replace(/^fields\./, "") : fieldPath,
-                );
-              contentObject = pickAndTransformFields(parsedObject, fields, requestedFieldPaths, config);
-            } else {
-              contentObject = deepMap(parsedObject, fields, (value, field) => {
-                const read = typeof field.type === "string" ? getCodec(field.type)?.read : undefined;
-                return read ? read(value, field, config) : value;
-              });
-            }
-          } catch (error: unknown) {
-            const message = error instanceof Error ? error.message : String(error);
-            console.error(`Error parsing frontmatter for file "${item.path}": ${message}`);
-            parsedErrors.push(`Error parsing frontmatter for file "${item.path}": ${message}`);
-          }
-        }
-
-        if (!fields?.length) {
-          contentObject.name = item.name;
-        }
-
-        const filenamePattern = (schema.filename as string | undefined) ?? "";
-        if (!contentObject.date && filenamePattern.startsWith("{year}-{month}-{day}")) {
-          const filenameDate = getDateFromFilename(String(item.name));
-          if (filenameDate) contentObject.date = filenameDate.string;
-        }
-
-        return {
-          sha: item.sha,
-          name: item.name,
-          parentPath: item.parentPath,
-          path: item.path,
-          fields: contentObject,
-          type: "file",
-          isNode: item.isNode,
-        };
-      }
-
-      if (item.type === "dir" && !excludedFiles.includes(String(item.name)) && schema.subfolders !== false) {
-        return {
-          name: item.name,
-          parentPath: item.parentPath,
-          path: item.path,
-          type: "dir",
-        };
-      }
-
-      return undefined;
-    })
-    .filter((item): item is EntrySummary => item !== undefined);
-
-  return { contents: parsedContents, errors: parsedErrors };
-};
-
-const pickAndTransformFields = (
-  parsedObject: Record<string, unknown>,
-  schemaFields: Field[],
-  fieldPaths: string[],
-  config: Record<string, unknown>,
-) => {
-  const output: Record<string, unknown> = {};
-  const dedupedPaths = Array.from(new Set(fieldPaths));
-
-  dedupedPaths.forEach((fieldPath) => {
-    const field = getFieldByPath(schemaFields, fieldPath);
-    if (!field) return;
-
-    let value = safeAccess(parsedObject, fieldPath);
-    const read = typeof field.type === "string" ? getCodec(field.type)?.read : undefined;
-    if (read) {
-      const transformedValue = read(value, field, config);
-      if (transformedValue !== undefined) value = transformedValue;
-    }
-    setByPath(output, fieldPath, value);
-  });
-
-  return output;
-};
-
-const setByPath = (target: Record<string, unknown>, path: string, value: unknown) => {
-  if (!path) return;
-  const segments = path.split(".");
-  let cursor: Record<string, unknown> = target;
-
-  for (let i = 0; i < segments.length - 1; i++) {
-    const key = segments[i];
-    if (cursor[key] == null || typeof cursor[key] !== "object" || Array.isArray(cursor[key])) {
-      cursor[key] = {};
-    }
-    cursor = cursor[key] as Record<string, unknown>;
-  }
-
-  cursor[segments[segments.length - 1]] = value;
-};
-
-const matchesSearchQuery = (
-  item: EntrySummary,
-  searchQuery: string,
-  searchFields: string[],
-): boolean => {
-  if (searchFields.length === 0) {
-    const name = item.name as string | undefined;
-    const path = item.path as string | undefined;
-    const content = item.content as string | undefined;
-    if (name?.toLowerCase().includes(searchQuery)) return true;
-    if (path?.toLowerCase().includes(searchQuery)) return true;
-    return Boolean(content && content.toLowerCase().includes(searchQuery));
-  }
-
-  return searchFields.some((field) => {
-    if (field === "name" || field === "path") {
-      const value = item[field];
-      return value && String(value).toLowerCase().includes(searchQuery);
-    }
-
-    if (field.startsWith("fields.")) {
-      const fieldPath = field.replace("fields.", "");
-      const fields = item.fields as Record<string, unknown> | undefined;
-      const value = fields ? safeAccess(fields, fieldPath) : undefined;
-      return value && String(value).toLowerCase().includes(searchQuery);
-    }
-
-    return false;
-  });
 };
 
 export {
   getEntry,
   getEntrySchema,
+  getRawEntry,
   listCollections,
   listEntries,
-  parseEntryContent,
+  toContentServiceContext,
+  toContentServiceReadContext,
 };
 export type {
   CollectionSummary,
